@@ -1,21 +1,21 @@
 (function(thisObj) {
 
+    // ============================================================
+    // CONFIG
+    // ============================================================
+    var SEEK_STEPS = 2;
+    var VOL_STEPS = 5;
+    var AUTO_REFRESH_MS = 5000;
 
-    // CONFIG - Optimizations for Spotify & AE Performance
-  
-    var SEEK_STEPS = 2;          
-    var VOL_STEPS = 2;           
-    var AUTO_REFRESH_MS = 10000; 
-
-  // NOW PLAYING
-
+    // ============================================================
+    // NOW PLAYING
+    // ============================================================
     function getTempFile(name) {
         return new File(Folder.temp.fsName + "/" + name);
     }
 
-    function writeNowPlayingScript(ps1File, outFile) {
+    function writeNowPlayingScript(ps1File) {
         var lines = [
-            '$outPath = "' + outFile.fsName + '"',
             '$result = ""',
             'try {',
             '    Add-Type -AssemblyName System.Runtime.WindowsRuntime | Out-Null',
@@ -46,7 +46,7 @@
             '} catch {',
             '    $result = "ERROR|$($_.Exception.Message)"',
             '}',
-            '$result | Out-File -FilePath $outPath -Encoding utf8 -Force'
+            'Write-Output $result'
         ];
         ps1File.encoding = "UTF-8";
         ps1File.open("w");
@@ -54,21 +54,8 @@
         ps1File.close();
     }
 
-    function waitForFile(file, timeoutMs) {
-        var start = new Date().getTime();
-        while (!file.exists) {
-            if (new Date().getTime() - start > timeoutMs) return false;
-            $.sleep(50);
-        }
-        return true;
-    }
-
-    function readAndParse(file) {
-        file.encoding = "UTF-8";
-        file.open("r");
-        var content = file.read();
-        file.close();
-        if (content === null) content = "";
+    function parseResult(raw) {
+        var content = (raw === null || raw === undefined) ? "" : String(raw);
         content = content.replace(/^\s+|\s+$/g, "");
         var pipeIndex = content.indexOf("|");
         if (pipeIndex === -1) return { status: "ERROR", text: content || "Empty response" };
@@ -78,24 +65,17 @@
     function fetchNowPlaying(callback) {
         try {
             var ps1 = getTempFile("afterPlaylist_nowPlaying.ps1");
-            var out = getTempFile("afterPlaylist_nowPlaying.txt");
-            if (out.exists) out.remove();
-            writeNowPlayingScript(ps1, out);
-            app.system('powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + ps1.fsName + '"');
-            if (!waitForFile(out, 4000)) {
-                callback({ status: "ERROR", text: "Timed out waiting for PowerShell" });
-                return;
-            }
-            $.sleep(100);
-            callback(readAndParse(out));
+            writeNowPlayingScript(ps1);
+            var raw = system.callSystem('powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + ps1.fsName + '"');
+            callback(parseResult(raw));
         } catch (e) {
             callback({ status: "ERROR", text: e.toString() });
         }
     }
 
-   
+    // ============================================================
     // UI
-   
+    // ============================================================
     function buildUI(thisObj) {
         var panel = (thisObj instanceof Panel) ? thisObj : new Window("palette", "After Playlist", undefined, { resizable: true });
         panel.orientation = "column";
@@ -163,11 +143,11 @@
         var statusText = panel.add("statictext", undefined, "Ready");
         try {
             statusText.graphics.foregroundColor = statusText.graphics.newPen(statusText.graphics.PenType.SOLID_COLOR, [0.55, 0.55, 0.55], 1);
-        } catch (e) { /* color customization handling */ }
+        } catch (e) {}
 
         function setStatus(msg) { statusText.text = msg; }
 
-        // ----- Refresh logic -----
+        // ----- Now-playing refresh -----
         var isRefreshing = false;
         function doRefresh() {
             if (isRefreshing) return;
@@ -201,7 +181,6 @@
             app.scheduleTask("$.global.__afterPlaylistAutoTick && $.global.__afterPlaylistAutoTick()", AUTO_REFRESH_MS, false);
         }
 
-        // Standardized global scope naming
         $.global.__afterPlaylistRefresh = doRefresh;
         $.global.__afterPlaylistAutoTick = function() {
             autoLoopArmed = false;
@@ -213,15 +192,14 @@
         // ----- Media key helpers -----
         function sendMediaKey(vkCode) {
             var psCommand = 'powershell -c "$wshell = New-Object -ComObject wscript.shell; $wshell.SendKeys([char]' + vkCode + ')"';
-            app.system(psCommand);
+            system.callSystem(psCommand);
         }
         function sendRepeatedKey(vkCode, count) {
             var psCommand = 'powershell -c "$wshell = New-Object -ComObject wscript.shell; for($i=0;$i -lt ' + count + ';$i++){ $wshell.SendKeys([char]' + vkCode + ') }"';
-            app.system(psCommand);
+            system.callSystem(psCommand);
         }
 
-        // Event Assignments
-        btnPlay.onClick = function() { sendMediaKey("0xCD"); setStatus("Sent: Play / Pause"); refreshSoon(); };
+        btnPlay.onClick = function() { sendMediaKey("0xB3"); setStatus("Sent: Play / Pause"); refreshSoon(); };
         btnNext.onClick = function() { sendMediaKey("0xB0"); setStatus("Sent: Next track"); refreshSoon(); };
         btnPrev.onClick = function() { sendMediaKey("0xB1"); setStatus("Sent: Previous track"); refreshSoon(); };
         btnMute.onClick = function() { sendMediaKey("0xAD"); setStatus("Sent: Mute toggle"); };
@@ -235,9 +213,11 @@
             if (chkAuto.value) { doRefresh(); armAutoLoop(); }
         };
 
-        panel.onClose = function() {
-            chkAuto.value = false;
-        };
+        if (panel instanceof Window) {
+            panel.onClose = function() {
+                chkAuto.value = false;
+            };
+        }
 
         doRefresh();
 
