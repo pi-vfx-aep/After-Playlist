@@ -8,9 +8,8 @@ After Playlist is an After Effects Script UI Panel that embeds media controls di
 
 ## Features and Quality of Life (QoL) Improvements
 1. Compact UI with standard unicode media icon so it isn't an eyesore to look at :D
-2. Instantly skip forward 10 seconds so you can go back to your favorite part of the song.
-3. A single mute toggle button so you can turn off the music whenever you want.
-4. Very easy to run! No need for spotify API keys or weird software. All you need is the script!
+2. Play, Pause, and skip forward and backward! No need to play songs you don't want to listen to.
+3. Very easy to run! No need for spotify API keys or weird software. All you need is the script!
 
 ##  Installation
 1. Open **After Effects**.
@@ -24,7 +23,7 @@ After Playlist is an After Effects Script UI Panel that embeds media controls di
    C:\Program Files\Adobe\Adobe After Effects <Version>\Support Files\Scripts\ScriptUI Panels\
 5. Restart After Effects. 
 
-    'Note:' This script only works with the desktop version of Spotify. It may not work with the browser site.
+    'Note:' This script only works with the desktop version of Spotify and other possible supported apps. It also takes a while for it to run after pressing the button so please have patience! 
 
 ## Extra Info
 Language: ExtendScript ( Javascript / JSX )

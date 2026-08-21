@@ -1,233 +1,297 @@
-(function(thisObj) {
+/*
+    AfterPlaylist Media Only v1.0
+    Windows-only After Effects ScriptUI panel.
 
-    // ============================================================
-    // CONFIG
-    // ============================================================
-    var SEEK_STEPS = 2;
-    var VOL_STEPS = 5;
-    var AUTO_REFRESH_MS = 5000;
+    This version sends standard Windows media-key events only.
+*/
+(function (thisObj) {
+    var VOLUME_STEPS = 2;
+    var COMMAND_TIMEOUT_MS = 10000;
 
-    // ============================================================
-    // NOW PLAYING
-    // ============================================================
-    function getTempFile(name) {
+    function tempFile(name) {
         return new File(Folder.temp.fsName + "/" + name);
     }
 
-    function writeNowPlayingScript(ps1File) {
-        var lines = [
-            '$result = ""',
-            'try {',
-            '    Add-Type -AssemblyName System.Runtime.WindowsRuntime | Out-Null',
-            '    $asTaskGeneric = ([System.WindowsRuntimeSystemExtensions].GetMethods() | Where-Object {',
-            '        $_.Name -eq \'AsTask\' -and $_.GetParameters().Count -eq 1 -and $_.GetParameters()[0].ParameterType.Name -eq \'IAsyncOperation`1\'',
-            '    })[0]',
-            '    function Await($WinRtTask, $ResultType) {',
-            '        $asTask = $asTaskGeneric.MakeGenericMethod($ResultType)',
-            '        $netTask = $asTask.Invoke($null, @($WinRtTask))',
-            '        $netTask.Wait(-1) | Out-Null',
-            '        $netTask.Result',
-            '    }',
-            '    [Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager,Windows.Media.Control,ContentType=WindowsRuntime] | Out-Null',
-            '    $manager = Await ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager]::RequestAsync()) ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager])',
-            '    $session = $manager.GetCurrentSession()',
-            '    if ($null -eq $session) {',
-            '        $result = "NONE|No active media session"',
-            '    } else {',
-            '        $props = Await ($session.TryGetMediaPropertiesAsync()) ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionMediaProperties])',
-            '        $playback = $session.GetPlaybackInfo()',
-            '        $status = $playback.PlaybackStatus.ToString()',
-            '        if ([string]::IsNullOrWhiteSpace($props.Title)) {',
-            '            $result = "NONE|No track information"',
-            '        } else {',
-            '            $result = "$status|$($props.Artist) - $($props.Title)"',
-            '        }',
-            '    }',
-            '} catch {',
-            '    $result = "ERROR|$($_.Exception.Message)"',
-            '}',
-            'Write-Output $result'
-        ];
-        ps1File.encoding = "UTF-8";
-        ps1File.open("w");
-        ps1File.write(lines.join("\n"));
-        ps1File.close();
+    function psQuote(value) {
+        // Quoting for paths inside PowerShell source code.
+        return "'" + String(value).replace(/'/g, "''") + "'";
     }
 
-    function parseResult(raw) {
-        var content = (raw === null || raw === undefined) ? "" : String(raw);
-        content = content.replace(/^\s+|\s+$/g, "");
-        var pipeIndex = content.indexOf("|");
-        if (pipeIndex === -1) return { status: "ERROR", text: content || "Empty response" };
-        return { status: content.substring(0, pipeIndex), text: content.substring(pipeIndex + 1) };
+    function cmdQuote(value) {
+        // Windows command-line quoting. Do not use PowerShell single quotes
+        // for arguments passed to system.callSystem().
+        return "\"" + String(value).replace(/\"/g, "\\\"") + "\"";
     }
 
-    function fetchNowPlaying(callback) {
+    function writeFile(file, text) {
+        file.encoding = "UTF-8";
+        if (!file.open("w")) {
+            throw new Error("Cannot create temporary PowerShell file.");
+        }
+        file.write(text);
+        file.close();
+    }
+
+    function readFile(file) {
+        var text = "";
+        file.encoding = "UTF-8";
+        if (!file.open("r")) {
+            throw new Error("Cannot read PowerShell response.");
+        }
+        text = file.read();
+        file.close();
+        return String(text).replace(/^\uFEFF/, "").replace(/^\s+|\s+$/g, "");
+    }
+
+    function runMediaCommand(vkCode, count) {
+        var id = String(new Date().getTime()) + "_" + String(Math.floor(Math.random() * 100000));
+        var scriptFile = tempFile("AfterPlaylist_media_" + id + ".ps1");
+        var wrapperFile = tempFile("AfterPlaylist_media_" + id + ".cmd");
+        var resultFile = tempFile("AfterPlaylist_media_" + id + ".txt");
+        var script = [
+            "$ErrorActionPreference = 'Stop'",
+            "$resultPath = " + psQuote(resultFile.fsName),
+            "$result = 'OK'",
+            "try {",
+            "    Add-Type @'",
+            "using System;",
+            "using System.Runtime.InteropServices;",
+            "public static class AfterPlaylistNativeKeyboard {",
+            "    [DllImport(\"user32.dll\", SetLastError=true)]",
+            "    public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);",
+            "    public const uint KEYEVENTF_KEYUP = 0x0002;",
+            "}",
+            "'@",
+            "    $key = [byte]" + String(vkCode),
+            "    $count = [int]" + String(count || 1),
+            "    for ($i = 0; $i -lt $count; $i++) {",
+            "        [AfterPlaylistNativeKeyboard]::keybd_event($key, 0, 0, [UIntPtr]::Zero)",
+            "        Start-Sleep -Milliseconds 15",
+            "        [AfterPlaylistNativeKeyboard]::keybd_event($key, 0, [AfterPlaylistNativeKeyboard]::KEYEVENTF_KEYUP, [UIntPtr]::Zero)",
+            "        Start-Sleep -Milliseconds 15",
+            "    }",
+            "} catch {",
+            "    $result = 'ERROR|' + $_.Exception.Message",
+            "} finally {",
+            "    Set-Content -LiteralPath $resultPath -Value $result -Encoding UTF8",
+            "}"
+        ].join("\r\n") + "\r\n";
+        var wrapper = [
+            "@echo off",
+            "setlocal",
+            "set \"PS=C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\"",
+            "\"%PS%\" -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File " + cmdQuote(scriptFile.fsName),
+            "endlocal",
+            "exit /b %ERRORLEVEL%"
+        ].join("\r\n") + "\r\n";
+
         try {
-            var ps1 = getTempFile("afterPlaylist_nowPlaying.ps1");
-            writeNowPlayingScript(ps1);
-            var raw = system.callSystem('powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + ps1.fsName + '"');
-            callback(parseResult(raw));
-        } catch (e) {
-            callback({ status: "ERROR", text: e.toString() });
+            if (resultFile.exists) {
+                try { resultFile.remove(); } catch (ignoreOldResult) {}
+            }
+            writeFile(scriptFile, script);
+            writeFile(wrapperFile, wrapper);
+            system.callSystem("cmd.exe /d /c call " + cmdQuote(wrapperFile.fsName));
+
+            var start = new Date().getTime();
+            while (!resultFile.exists && (new Date().getTime() - start) < COMMAND_TIMEOUT_MS) {
+                $.sleep(25);
+            }
+            if (!resultFile.exists) {
+                throw new Error("PowerShell did not create a response. Confirm Windows PowerShell is installed and that After Effects can write to its temp folder.");
+            }
+
+            var response = readFile(resultFile);
+            if (response.indexOf("ERROR|") === 0) {
+                throw new Error(response.substring(6));
+            }
+        } finally {
+            try { scriptFile.remove(); } catch (ignoreScript) {}
+            try { wrapperFile.remove(); } catch (ignoreWrapper) {}
+            try { resultFile.remove(); } catch (ignoreResult) {}
         }
     }
 
-    // ============================================================
-    // UI
-    // ============================================================
     function buildUI(thisObj) {
-        var panel = (thisObj instanceof Panel) ? thisObj : new Window("palette", "After Playlist", undefined, { resizable: true });
+        var panel = (thisObj instanceof Panel) ? thisObj : new Window("palette", "AfterPlaylist", undefined, { resizable: true });
+        var bg = [0.055, 0.065, 0.075];
+        var card = [0.085, 0.100, 0.115];
+        var cardAlt = [0.105, 0.120, 0.140];
+        var accent = [0.25, 0.82, 0.72];
+        var white = [0.92, 0.95, 0.96];
+        var muted = [0.52, 0.58, 0.62];
+
         panel.orientation = "column";
         panel.alignChildren = ["fill", "top"];
-        panel.spacing = 8;
-        panel.margins = 12;
-        panel.preferredSize.width = 320;
+        panel.spacing = 10;
+        panel.margins = 14;
+        panel.preferredSize = [390, 260];
+        panel.minimumSize = [330, 230];
 
-        if ($.os.toLowerCase().indexOf("windows") === -1) {
-            var warn = panel.add("statictext", undefined, "⚠ This panel uses PowerShell and only works on Windows.", { multiline: true });
-            warn.preferredSize = [290, 30];
+        function brush(control, color) {
+            try { control.graphics.backgroundColor = control.graphics.newBrush(control.graphics.BrushType.SOLID_COLOR, color); } catch (e) {}
+        }
+        function pen(control, color) {
+            try { control.graphics.foregroundColor = control.graphics.newPen(control.graphics.PenType.SOLID_COLOR, color, 1); } catch (e) {}
+        }
+        function paint(control, background, foreground) {
+            brush(control, background);
+            pen(control, foreground);
+        }
+        function label(parent, text, size, color) {
+            var item = parent.add("statictext", undefined, text);
+            item.graphics.font = ScriptUI.newFont("Segoe UI", "REGULAR", size);
+            pen(item, color);
+            return item;
+        }
+        function buttonStyle(button, background, foreground, size) {
+            button.preferredSize.height = size || 34;
+            button.graphics.font = ScriptUI.newFont("Segoe UI", "BOLD", 10);
+            paint(button, background, foreground);
+        }
+        function divider(parent) {
+            var line = parent.add("panel");
+            line.preferredSize.height = 1;
+            brush(line, [0.16, 0.19, 0.21]);
+            return line;
         }
 
-        // ----- Now Playing -----
-        var nowPlayingPanel = panel.add("panel", undefined, "Now Playing");
-        nowPlayingPanel.orientation = "column";
-        nowPlayingPanel.alignChildren = ["fill", "top"];
-        nowPlayingPanel.margins = [10, 16, 10, 10];
-        nowPlayingPanel.spacing = 6;
+        paint(panel, bg, white);
 
-        var songText = nowPlayingPanel.add("statictext", undefined, "Press Refresh to check…", { multiline: true });
-        songText.preferredSize = [290, 32];
+        // Header: compact brand treatment instead of the default AE panel look.
+        var header = panel.add("group");
+        header.orientation = "row";
+        header.alignChildren = ["left", "center"];
+        header.spacing = 10;
+        var mark = header.add("panel");
+        mark.preferredSize = [8, 34];
+        brush(mark, accent);
+        var titleColumn = header.add("group");
+        titleColumn.orientation = "column";
+        titleColumn.alignChildren = ["left", "top"];
+        titleColumn.spacing = 1;
+        var title = label(titleColumn, "AFTERPLAYLIST", 15, white);
+        title.graphics.font = ScriptUI.newFont("Segoe UI", "BOLD", 15);
+        var subtitle = label(titleColumn, "WINDOWS MEDIA CONTROL", 8, muted);
+        var badge = header.add("statictext", undefined, "  READY  ");
+        badge.alignment = "right";
+        badge.graphics.font = ScriptUI.newFont("Segoe UI", "BOLD", 8);
+        paint(badge, [0.10, 0.20, 0.19], accent);
 
-        var npRow = nowPlayingPanel.add("group");
-        npRow.orientation = "row";
-        npRow.alignChildren = ["left", "center"];
-        var btnRefresh = npRow.add("button", undefined, "🔄 Refresh");
-        btnRefresh.helpText = "Fetch the currently playing track";
-        var chkAuto = npRow.add("checkbox", undefined, "Auto (every " + (AUTO_REFRESH_MS / 1000) + "s)");
-        chkAuto.helpText = "Automatically refresh now-playing info";
+        divider(panel);
 
-        // ----- Playback -----
-        var playbackPanel = panel.add("panel", undefined, "Playback");
-        playbackPanel.orientation = "row";
-        playbackPanel.alignChildren = ["center", "center"];
-        playbackPanel.margins = [10, 16, 10, 10];
+        // Playback card with one clearly dominant action.
+        var playbackPanel = panel.add("panel");
+        playbackPanel.orientation = "column";
+        playbackPanel.alignChildren = ["fill", "top"];
+        playbackPanel.margins = [12, 12, 12, 12];
+        playbackPanel.spacing = 8;
+        paint(playbackPanel, card, white);
+        var playbackLabel = label(playbackPanel, "PLAYBACK", 9, accent);
+        playbackLabel.graphics.font = ScriptUI.newFont("Segoe UI", "BOLD", 9);
+        var playbackRow = playbackPanel.add("group");
+        playbackRow.orientation = "row";
+        playbackRow.alignChildren = ["fill", "center"];
+        playbackRow.spacing = 7;
+        var btnPrevious = playbackRow.add("button", undefined, "PREV");
+        var btnPlayPause = playbackRow.add("button", undefined, "PLAY / PAUSE");
+        var btnNext = playbackRow.add("button", undefined, "NEXT");
+        btnPrevious.preferredSize = [82, 40];
+        btnPlayPause.preferredSize = [148, 44];
+        btnNext.preferredSize = [82, 40];
+        buttonStyle(btnPrevious, cardAlt, white, 40);
+        buttonStyle(btnPlayPause, accent, [0.04, 0.08, 0.08], 44);
+        buttonStyle(btnNext, cardAlt, white, 40);
 
-        var btnRewind = playbackPanel.add("button", undefined, "⏪ 10s");
-        var btnPrev = playbackPanel.add("button", undefined, "⏮");
-        var btnPlay = playbackPanel.add("button", undefined, "⏯");
-        var btnNext = playbackPanel.add("button", undefined, "⏭");
-        var btnForward = playbackPanel.add("button", undefined, "⏩ 10s");
+        // Volume card with clean, evenly weighted controls.
+        var volumePanel = panel.add("panel");
+        volumePanel.orientation = "column";
+        volumePanel.alignChildren = ["fill", "top"];
+        volumePanel.margins = [12, 12, 12, 12];
+        volumePanel.spacing = 8;
+        paint(volumePanel, card, white);
+        var volumeLabel = label(volumePanel, "SYSTEM VOLUME", 9, accent);
+        volumeLabel.graphics.font = ScriptUI.newFont("Segoe UI", "BOLD", 9);
+        var volumeRow = volumePanel.add("group");
+        volumeRow.orientation = "row";
+        volumeRow.alignChildren = ["fill", "center"];
+        volumeRow.spacing = 7;
+        var btnVolumeDown = volumeRow.add("button", undefined, "VOLUME -");
+        var btnMute = volumeRow.add("button", undefined, "MUTE");
+        var btnVolumeUp = volumeRow.add("button", undefined, "VOLUME +");
+        buttonStyle(btnVolumeDown, cardAlt, white, 34);
+        buttonStyle(btnMute, [0.16, 0.12, 0.13], [0.95, 0.72, 0.74], 34);
+        buttonStyle(btnVolumeUp, cardAlt, white, 34);
 
-        btnRewind.helpText = "Seek back ~10s";
-        btnPrev.helpText = "Previous track";
-        btnPlay.helpText = "Play / Pause";
-        btnNext.helpText = "Next track";
-        btnForward.helpText = "Seek forward ~10s";
+        var statusRow = panel.add("group");
+        statusRow.orientation = "row";
+        statusRow.alignChildren = ["left", "center"];
+        statusRow.spacing = 6;
+        var statusDot = statusRow.add("statictext", undefined, "●");
+        statusDot.graphics.font = ScriptUI.newFont("Segoe UI", "REGULAR", 10);
+        pen(statusDot, accent);
+        var statusText = label(statusRow, "Ready", 9, muted);
+        var closed = false;
+        var commandLocked = false;
+        var lastCommandAt = 0;
+        var CLICK_COOLDOWN_MS = 500;
+        var controls = [btnPrevious, btnPlayPause, btnNext, btnVolumeDown, btnMute, btnVolumeUp];
 
-        // ----- Volume -----
-        var volumePanel = panel.add("panel", undefined, "Volume");
-        volumePanel.orientation = "row";
-        volumePanel.alignChildren = ["center", "center"];
-        volumePanel.margins = [10, 16, 10, 10];
-
-        var btnVolDown = volumePanel.add("button", undefined, "🔉 Vol -");
-        var btnMute = volumePanel.add("button", undefined, "🔇 Mute");
-        var btnVolUp = volumePanel.add("button", undefined, "🔊 Vol +");
-
-        btnVolDown.helpText = "Lower system volume";
-        btnMute.helpText = "Toggle mute";
-        btnVolUp.helpText = "Raise system volume";
-
-        // ----- Status bar -----
-        var statusText = panel.add("statictext", undefined, "Ready");
-        try {
-            statusText.graphics.foregroundColor = statusText.graphics.newPen(statusText.graphics.PenType.SOLID_COLOR, [0.55, 0.55, 0.55], 1);
-        } catch (e) {}
-
-        function setStatus(msg) { statusText.text = msg; }
-
-        // ----- Now-playing refresh -----
-        var isRefreshing = false;
-        function doRefresh() {
-            if (isRefreshing) return;
-            isRefreshing = true;
-            setStatus("Fetching now playing…");
-            fetchNowPlaying(function(result) {
-                isRefreshing = false;
-                if (result.status === "ERROR") {
-                    songText.text = "⚠ " + result.text;
-                    setStatus("Error fetching now playing");
-                } else if (result.status === "NONE") {
-                    songText.text = "— " + result.text + " —";
-                    setStatus("Ready");
-                } else {
-                    var icon = (result.status === "Playing") ? "▶" : "⏸";
-                    songText.text = icon + " " + result.text;
-                    setStatus("Ready");
-                }
-                panel.layout.layout(true);
-            });
+        function setStatus(text) {
+            if (!closed) statusText.text = text;
         }
 
-        function refreshSoon() {
-            app.scheduleTask("$.global.__afterPlaylistRefresh && $.global.__afterPlaylistRefresh()", 600, false);
+        function send(vkCode, count, description) {
+            var now;
+            var i;
+            if (closed) return;
+            now = new Date().getTime();
+            if (commandLocked || (now - lastCommandAt) < CLICK_COOLDOWN_MS) {
+                setStatus("Please wait...");
+                return;
+            }
+            commandLocked = true;
+            lastCommandAt = now;
+            badge.text = "  BUSY  ";
+            paint(badge, [0.23, 0.19, 0.08], [1.0, 0.78, 0.30]);
+            for (i = 0; i < controls.length; i++) controls[i].enabled = false;
+            try {
+                setStatus("Sending " + description + "...");
+                runMediaCommand(vkCode, count);
+                setStatus("Sent: " + description);
+            } catch (e) {
+                setStatus("Error: " + (e.message || String(e)));
+            } finally {
+                commandLocked = false;
+                badge.text = "  READY  ";
+                paint(badge, [0.10, 0.20, 0.19], accent);
+                for (i = 0; i < controls.length; i++) controls[i].enabled = true;
+            }
+            panel.layout.layout(true);
         }
 
-        var autoLoopArmed = false;
-        function armAutoLoop() {
-            if (autoLoopArmed) return;
-            autoLoopArmed = true;
-            app.scheduleTask("$.global.__afterPlaylistAutoTick && $.global.__afterPlaylistAutoTick()", AUTO_REFRESH_MS, false);
-        }
+        // Windows virtual-key codes: next, previous, play/pause, mute, volume down/up.
+        btnPlayPause.onClick = function () { send(0xB3, 1, "Play / Pause"); };
+        btnPrevious.onClick = function () { send(0xB1, 1, "Previous track"); };
+        btnNext.onClick = function () { send(0xB0, 1, "Next track"); };
+        btnMute.onClick = function () { send(0xAD, 1, "Mute toggle"); };
+        btnVolumeDown.onClick = function () { send(0xAE, VOLUME_STEPS, "Volume down"); };
+        btnVolumeUp.onClick = function () { send(0xAF, VOLUME_STEPS, "Volume up"); };
 
-        $.global.__afterPlaylistRefresh = doRefresh;
-        $.global.__afterPlaylistAutoTick = function() {
-            autoLoopArmed = false;
-            if (!chkAuto.value) return;
-            doRefresh();
-            armAutoLoop();
+        panel.onClose = function () {
+            closed = true;
         };
-
-        // ----- Media key helpers -----
-        function sendMediaKey(vkCode) {
-            var psCommand = 'powershell -c "$wshell = New-Object -ComObject wscript.shell; $wshell.SendKeys([char]' + vkCode + ')"';
-            system.callSystem(psCommand);
-        }
-        function sendRepeatedKey(vkCode, count) {
-            var psCommand = 'powershell -c "$wshell = New-Object -ComObject wscript.shell; for($i=0;$i -lt ' + count + ';$i++){ $wshell.SendKeys([char]' + vkCode + ') }"';
-            system.callSystem(psCommand);
-        }
-
-        btnPlay.onClick = function() { sendMediaKey("0xB3"); setStatus("Sent: Play / Pause"); refreshSoon(); };
-        btnNext.onClick = function() { sendMediaKey("0xB0"); setStatus("Sent: Next track"); refreshSoon(); };
-        btnPrev.onClick = function() { sendMediaKey("0xB1"); setStatus("Sent: Previous track"); refreshSoon(); };
-        btnMute.onClick = function() { sendMediaKey("0xAD"); setStatus("Sent: Mute toggle"); };
-        btnRewind.onClick = function() { sendRepeatedKey("0x25", SEEK_STEPS); setStatus("Sent: Seek back"); };
-        btnForward.onClick = function() { sendRepeatedKey("0x27", SEEK_STEPS); setStatus("Sent: Seek forward"); };
-        btnVolDown.onClick = function() { sendRepeatedKey("0xAE", VOL_STEPS); setStatus("Sent: Volume down"); };
-        btnVolUp.onClick = function() { sendRepeatedKey("0xAF", VOL_STEPS); setStatus("Sent: Volume up"); };
-
-        btnRefresh.onClick = doRefresh;
-        chkAuto.onClick = function() {
-            if (chkAuto.value) { doRefresh(); armAutoLoop(); }
+        panel.onResizing = panel.onResize = function () {
+            this.layout.resize();
         };
-
-        if (panel instanceof Window) {
-            panel.onClose = function() {
-                chkAuto.value = false;
-            };
-        }
-
-        doRefresh();
 
         panel.layout.layout(true);
         return panel;
     }
 
-    var scriptUI = buildUI(thisObj);
-    if (scriptUI instanceof Window) {
-        scriptUI.center();
-        scriptUI.show();
+    var ui = buildUI(thisObj);
+    if (ui instanceof Window) {
+        ui.center();
+        ui.show();
     }
 })(this);
