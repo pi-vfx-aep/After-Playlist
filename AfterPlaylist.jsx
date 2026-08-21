@@ -47,18 +47,56 @@
        var scriptFile = tempFile("AfterPlaylist_media" + id + ".ps1");
        var wrapperFile = tempFile("AfterPlaylist_media_" + id + ".cmd");
        var script = [
-        
-       ]
+        "$ErrorActionPreference = 'Stop'",
+        "try {",
+        "    Add-Type @'",
+        "using System;",
+        "using System.Runtime.InteropServices;",
+        "public static class AfterPlaylistNativeKeyboard {",
+        "    [DllImport(\"user32.dll\", SetLastError=true)]",
+        "    public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);",
+        "    public const uint KEYEVENTF_KEYUP = 0x0002;",
+        "}",
+        "'@",
+        "    $key = [byte]" + String(vkCode),
+        "    $count = [int]" + String(count || 1),
+        "    for ($i = 0; $i -lt $count; $i++) {",
+        "        [AfterPlaylistNativeKeyboard]::keybd_event($key, 0, 0, [UIntPtr]::Zero)",
+        "        Start-Sleep -Milliseconds 15",
+        "        [AfterPlaylistNativeKeyboard]::keybd_event($key, 0, [AfterPlaylistNativeKeyboard]::KEYEVENTF_KEYUP, [UIntPtr]::Zero)",
+        "        Start-Sleep -Milliseconds 15",
+        "    }",
+        "} catch {",
+        "    # Fire-and-forget: do not send errors back through the AE UI thread.",
+        "}",
+        "Start-Sleep -Milliseconds 100",
+        "Remove-Item -LiteralPath " + psQuote(scriptFile.fsName) + " -Force -ErrorAction SilentlyContinue",
+        "Remove-Item -LiteralPath " + psQuote(wrapperFile.fsName) + " -Force -ErrorAction SilentlyContinue"
+       ].join("\r\n") + "\r\n";
+       var wrapper = [
+        "@echo off",
+        "setLocal",
+        "set \"PS=C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"",
+        "\"%PS%\" -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowsStyle Hidden -File" + cmdQuote(scriptFile.fsName),
+        "endlocal",
+        "exit /b 0"
+       ].join("\r\n") + "\r\n";
+
+       writeFile(scriptFile, script);
+       writeFile(wrapperFile, wrapper):
+
+
+       system.callSystem("cmd.exe /d /c start \"\" /b " + cmdQuote(wrapperFile.fsName));
     }
 
     function buildUI(thisObj) {
         var panel = (thisObj instanceof Panel) ? thisObj : new Window("palette", "AfterPlaylist", undefined, { resizable: true });
-        var bg = [0.055, 0.065, 0.075];
-        var card = [0.085, 0.100, 0.115];
-        var cardAlt = [0.105, 0.120, 0.140];
-        var accent = [0.25, 0.82, 0.72];
-        var white = [0.92, 0.95, 0.96];
-        var muted = [0.52, 0.58, 0.62];
+        var bg = [0.12, 0.12, 0.12];
+        var card = [0.16, 0.16, 0.16];
+        var cardAlt = [0.20, 0.20, 0.20];
+        var accent = [0.38, 0.66, 0.46];
+        var white = [0.88, 0.88, 0.88];
+        var muted = [0.62, 0.62, 0.62];
 
         panel.orientation = "column";
         panel.alignChildren = ["fill", "top"];
