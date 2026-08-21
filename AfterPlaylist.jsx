@@ -1,5 +1,5 @@
 /*
-    AfterPlaylist Media Only v1.0
+    AfterPlaylist v1.0
     Windows-only After Effects ScriptUI panel.
 
     This version sends standard Windows media-key events only.
@@ -13,13 +13,12 @@
     }
 
     function psQuote(value) {
-        // Quoting for paths inside PowerShell source code.
+       
         return "'" + String(value).replace(/'/g, "''") + "'";
     }
 
     function cmdQuote(value) {
-        // Windows command-line quoting. Do not use PowerShell single quotes
-        // for arguments passed to system.callSystem().
+       
         return "\"" + String(value).replace(/\"/g, "\\\"") + "\"";
     }
 
@@ -158,7 +157,7 @@
 
         paint(panel, bg, white);
 
-        // Header: compact brand treatment instead of the default AE panel look.
+        
         var header = panel.add("group");
         header.orientation = "row";
         header.alignChildren = ["left", "center"];
@@ -180,7 +179,7 @@
 
         divider(panel);
 
-        // Playback card with one clearly dominant action.
+        // Playback card 
         var playbackPanel = panel.add("panel");
         playbackPanel.orientation = "column";
         playbackPanel.alignChildren = ["fill", "top"];
@@ -203,7 +202,7 @@
         buttonStyle(btnPlayPause, accent, [0.04, 0.08, 0.08], 44);
         buttonStyle(btnNext, cardAlt, white, 40);
 
-        // Volume card with clean, evenly weighted controls.
+        // Volume card 
         var volumePanel = panel.add("panel");
         volumePanel.orientation = "column";
         volumePanel.alignChildren = ["fill", "top"];
