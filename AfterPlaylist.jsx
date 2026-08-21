@@ -43,72 +43,12 @@
     }
 
     function runMediaCommand(vkCode, count) {
-        var id = String(new Date().getTime()) + "_" + String(Math.floor(Math.random() * 100000));
-        var scriptFile = tempFile("AfterPlaylist_media_" + id + ".ps1");
-        var wrapperFile = tempFile("AfterPlaylist_media_" + id + ".cmd");
-        var resultFile = tempFile("AfterPlaylist_media_" + id + ".txt");
-        var script = [
-            "$ErrorActionPreference = 'Stop'",
-            "$resultPath = " + psQuote(resultFile.fsName),
-            "$result = 'OK'",
-            "try {",
-            "    Add-Type @'",
-            "using System;",
-            "using System.Runtime.InteropServices;",
-            "public static class AfterPlaylistNativeKeyboard {",
-            "    [DllImport(\"user32.dll\", SetLastError=true)]",
-            "    public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);",
-            "    public const uint KEYEVENTF_KEYUP = 0x0002;",
-            "}",
-            "'@",
-            "    $key = [byte]" + String(vkCode),
-            "    $count = [int]" + String(count || 1),
-            "    for ($i = 0; $i -lt $count; $i++) {",
-            "        [AfterPlaylistNativeKeyboard]::keybd_event($key, 0, 0, [UIntPtr]::Zero)",
-            "        Start-Sleep -Milliseconds 15",
-            "        [AfterPlaylistNativeKeyboard]::keybd_event($key, 0, [AfterPlaylistNativeKeyboard]::KEYEVENTF_KEYUP, [UIntPtr]::Zero)",
-            "        Start-Sleep -Milliseconds 15",
-            "    }",
-            "} catch {",
-            "    $result = 'ERROR|' + $_.Exception.Message",
-            "} finally {",
-            "    Set-Content -LiteralPath $resultPath -Value $result -Encoding UTF8",
-            "}"
-        ].join("\r\n") + "\r\n";
-        var wrapper = [
-            "@echo off",
-            "setlocal",
-            "set \"PS=C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\"",
-            "\"%PS%\" -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File " + cmdQuote(scriptFile.fsName),
-            "endlocal",
-            "exit /b %ERRORLEVEL%"
-        ].join("\r\n") + "\r\n";
-
-        try {
-            if (resultFile.exists) {
-                try { resultFile.remove(); } catch (ignoreOldResult) {}
-            }
-            writeFile(scriptFile, script);
-            writeFile(wrapperFile, wrapper);
-            system.callSystem("cmd.exe /d /c call " + cmdQuote(wrapperFile.fsName));
-
-            var start = new Date().getTime();
-            while (!resultFile.exists && (new Date().getTime() - start) < COMMAND_TIMEOUT_MS) {
-                $.sleep(25);
-            }
-            if (!resultFile.exists) {
-                throw new Error("PowerShell did not create a response. Confirm Windows PowerShell is installed and that After Effects can write to its temp folder.");
-            }
-
-            var response = readFile(resultFile);
-            if (response.indexOf("ERROR|") === 0) {
-                throw new Error(response.substring(6));
-            }
-        } finally {
-            try { scriptFile.remove(); } catch (ignoreScript) {}
-            try { wrapperFile.remove(); } catch (ignoreWrapper) {}
-            try { resultFile.remove(); } catch (ignoreResult) {}
-        }
+       var id = String(new Date().getTime()) + "_" + String(Math.floor(Math.random() * 100000));
+       var scriptFile = tempFile("AfterPlaylist_media" + id + ".ps1");
+       var wrapperFile = tempFile("AfterPlaylist_media_" + id + ".cmd");
+       var script = [
+        
+       ]
     }
 
     function buildUI(thisObj) {
