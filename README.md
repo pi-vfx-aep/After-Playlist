@@ -17,11 +17,15 @@ After Playlist is an After Effects Script UI Panel that embeds media controls di
    * Go to **Edit > Preferences > Scripting & Expressions**.
    * Check **"Allow Scripts to Write Files and Access Network"**.
    * Click **OK**.
-3. Download or copy `KeyframeMyVibe.jsx`.
-4. Place the `.jsx` file into your ScriptUI Panels directory:
+3. Close After Effects
+4. Download or copy `KeyframeMyVibe.jsx`.
+5. Place the `.jsx` file into your ScriptUI Panels directory:
    ```text
    C:\Program Files\Adobe\Adobe After Effects <Version>\Support Files\Scripts\ScriptUI Panels\
-5. Restart After Effects. 
+6. Open After Effects:
+   * Go to Window at the top.
+   * Click the After Playlist file (May need to scroll down)
+   * Begin using it!
 
     'Note:' This script only works with the desktop version of Spotify and other possible supported apps. It also takes a while for it to run after pressing the button so please have patience! 
 
