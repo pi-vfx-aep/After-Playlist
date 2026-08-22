@@ -1,8 +1,6 @@
 /*
-    AfterPlaylist v1.0
+    AfterPlaylist Media Only v1.0
     Windows-only After Effects ScriptUI panel.
-
-    This version sends standard Windows media-key events only.
 */
 (function (thisObj) {
     var VOLUME_STEPS = 2;
@@ -13,12 +11,12 @@
     }
 
     function psQuote(value) {
-       
+      
         return "'" + String(value).replace(/'/g, "''") + "'";
     }
 
     function cmdQuote(value) {
-       
+      
         return "\"" + String(value).replace(/\"/g, "\\\"") + "\"";
     }
 
@@ -42,51 +40,55 @@
         return String(text).replace(/^\uFEFF/, "").replace(/^\s+|\s+$/g, "");
     }
 
+    function vbsQuote(value) {
+        return "\"" + String(value).replace(/\"/g, "\"\"") + "\"";
+    }
+
+    // runMediaCommand
+
     function runMediaCommand(vkCode, count) {
-       var id = String(new Date().getTime()) + "_" + String(Math.floor(Math.random() * 100000));
-       var scriptFile = tempFile("AfterPlaylist_media" + id + ".ps1");
-       var wrapperFile = tempFile("AfterPlaylist_media_" + id + ".cmd");
-       var script = [
-        "$ErrorActionPreference = 'Stop'",
-        "try {",
-        "    Add-Type @'",
-        "using System;",
-        "using System.Runtime.InteropServices;",
-        "public static class AfterPlaylistNativeKeyboard {",
-        "    [DllImport(\"user32.dll\", SetLastError=true)]",
-        "    public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);",
-        "    public const uint KEYEVENTF_KEYUP = 0x0002;",
-        "}",
-        "'@",
-        "    $key = [byte]" + String(vkCode),
-        "    $count = [int]" + String(count || 1),
-        "    for ($i = 0; $i -lt $count; $i++) {",
-        "        [AfterPlaylistNativeKeyboard]::keybd_event($key, 0, 0, [UIntPtr]::Zero)",
-        "        Start-Sleep -Milliseconds 15",
-        "        [AfterPlaylistNativeKeyboard]::keybd_event($key, 0, [AfterPlaylistNativeKeyboard]::KEYEVENTF_KEYUP, [UIntPtr]::Zero)",
-        "        Start-Sleep -Milliseconds 15",
-        "    }",
-        "} catch {",
-        "    # Fire-and-forget: do not send errors back through the AE UI thread.",
-        "}",
-        "Start-Sleep -Milliseconds 100",
-        "Remove-Item -LiteralPath " + psQuote(scriptFile.fsName) + " -Force -ErrorAction SilentlyContinue",
-        "Remove-Item -LiteralPath " + psQuote(wrapperFile.fsName) + " -Force -ErrorAction SilentlyContinue"
-       ].join("\r\n") + "\r\n";
-       var wrapper = [
-        "@echo off",
-        "setLocal",
-        "set \"PS=C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"",
-        "\"%PS%\" -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowsStyle Hidden -File" + cmdQuote(scriptFile.fsName),
-        "endlocal",
-        "exit /b 0"
-       ].join("\r\n") + "\r\n";
+        var id = String(new Date().getTime()) + "_" + String(Math.floor(Math.random() * 100000));
+        var scriptFile = tempFile("AfterPlaylist_media_" + id + ".ps1");
+        var launcherFile = tempFile("AfterPlaylist_media_" + id + ".vbs");
+        var script = [
+            "$ErrorActionPreference = 'Stop'",
+            "try {",
+            "    Add-Type @'",
+            "using System;",
+            "using System.Runtime.InteropServices;",
+            "public static class AfterPlaylistNativeKeyboard {",
+            "    [DllImport(\"user32.dll\", SetLastError=true)]",
+            "    public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);",
+            "    public const uint KEYEVENTF_KEYUP = 0x0002;",
+            "}",
+            "'@",
+            "    $key = [byte]" + String(vkCode),
+            "    $count = [int]" + String(count || 1),
+            "    for ($i = 0; $i -lt $count; $i++) {",
+            "        [AfterPlaylistNativeKeyboard]::keybd_event($key, 0, 0, [UIntPtr]::Zero)",
+            "        Start-Sleep -Milliseconds 15",
+            "        [AfterPlaylistNativeKeyboard]::keybd_event($key, 0, [AfterPlaylistNativeKeyboard]::KEYEVENTF_KEYUP, [UIntPtr]::Zero)",
+            "        Start-Sleep -Milliseconds 15",
+            "    }",
+            "} catch {",
+            "    # Media commands are intentionally fire-and-forget.",
+            "}",
+            "Start-Sleep -Milliseconds 100",
+            "Remove-Item -LiteralPath " + psQuote(scriptFile.fsName) + " -Force -ErrorAction SilentlyContinue",
+            "Remove-Item -LiteralPath " + psQuote(launcherFile.fsName) + " -Force -ErrorAction SilentlyContinue"
+        ].join("\r\n") + "\r\n";
+        var launcher = [
+            "Dim sh",
+            "Set sh = CreateObject(\"WScript.Shell\")",
+            "cmd = " + vbsQuote("C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File ") + " & Chr(34) & " + vbsQuote(scriptFile.fsName) + " & Chr(34)",
+            "sh.Run cmd, 0, False",
+            "Set sh = Nothing"
+        ].join("\r\n") + "\r\n";
 
-       writeFile(scriptFile, script);
-       writeFile(wrapperFile, wrapper):
-
-
-       system.callSystem("cmd.exe /d /c start \"\" /b " + cmdQuote(wrapperFile.fsName));
+        writeFile(scriptFile, script);
+        writeFile(launcherFile, launcher);
+      
+        system.callSystem("wscript.exe //B //NoLogo " + cmdQuote(launcherFile.fsName));
     }
 
     function buildUI(thisObj) {
@@ -135,7 +137,7 @@
 
         paint(panel, bg, white);
 
-        
+        // Header
         var header = panel.add("group");
         header.orientation = "row";
         header.alignChildren = ["left", "center"];
@@ -147,9 +149,9 @@
         titleColumn.orientation = "column";
         titleColumn.alignChildren = ["left", "top"];
         titleColumn.spacing = 1;
-        var title = label(titleColumn, "AfterPlaylist", 15, white)
+        var title = label(titleColumn, "AfterPlaylist", 15, white);
         title.graphics.font = ScriptUI.newFont("Segoe UI", "BOLD", 15);
-        var subtitle = label(titleColumn, "MEDIA CONTROLS", 8, muted)
+        var subtitle = label(titleColumn, "MEDIA CONTROLS", 8, muted);
         var badge = header.add("statictext", undefined, "  READY  ");
         badge.alignment = "right";
         badge.graphics.font = ScriptUI.newFont("Segoe UI", "BOLD", 8);
@@ -157,7 +159,7 @@
 
         divider(panel);
 
-        // Playback card 
+        // Playback card
         var playbackPanel = panel.add("panel");
         playbackPanel.orientation = "column";
         playbackPanel.alignChildren = ["fill", "top"];
@@ -180,7 +182,7 @@
         buttonStyle(btnPlayPause, cardAlt, white, 44);
         buttonStyle(btnNext, cardAlt, white, 40);
 
-        // Volume card 
+        // Volume card
         var volumePanel = panel.add("panel");
         volumePanel.orientation = "column";
         volumePanel.alignChildren = ["fill", "top"];
@@ -229,8 +231,8 @@
             }
             commandLocked = true;
             lastCommandAt = now;
-            badge.text = "  BUSY  ";
-            paint(badge, [0.23, 0.19, 0.08], [1.0, 0.78, 0.30]);
+            badge.text = "  WORKING  ";
+            paint(badge, cardAlt, muted);
             for (i = 0; i < controls.length; i++) controls[i].enabled = false;
             try {
                 setStatus("Sending " + description + "...");
@@ -247,7 +249,7 @@
             panel.layout.layout(true);
         }
 
-        // Windows virtual-key codes: next, previous, play/pause, mute, volume down/up.
+        // Windows virtual-key codes
         btnPlayPause.onClick = function () { send(0xB3, 1, "Play / Pause"); };
         btnPrevious.onClick = function () { send(0xB1, 1, "Previous track"); };
         btnNext.onClick = function () { send(0xB0, 1, "Next track"); };
