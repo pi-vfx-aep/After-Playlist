@@ -147,13 +147,13 @@
         titleColumn.orientation = "column";
         titleColumn.alignChildren = ["left", "top"];
         titleColumn.spacing = 1;
-        var title = label(titleColumn, "AFTERPLAYLIST", 15, white);
+        var title = label(titleColumn, "AfterPlaylist", 15, white)
         title.graphics.font = ScriptUI.newFont("Segoe UI", "BOLD", 15);
-        var subtitle = label(titleColumn, "WINDOWS MEDIA CONTROL", 8, muted);
+        var subtitle = label(titleColumn, "MEDIA CONTROLS", 8, muted)
         var badge = header.add("statictext", undefined, "  READY  ");
         badge.alignment = "right";
         badge.graphics.font = ScriptUI.newFont("Segoe UI", "BOLD", 8);
-        paint(badge, [0.10, 0.20, 0.19], accent);
+        paint(badge, cardAlt, muted);
 
         divider(panel);
 
@@ -177,7 +177,7 @@
         btnPlayPause.preferredSize = [148, 44];
         btnNext.preferredSize = [82, 40];
         buttonStyle(btnPrevious, cardAlt, white, 40);
-        buttonStyle(btnPlayPause, accent, [0.04, 0.08, 0.08], 44);
+        buttonStyle(btnPlayPause, cardAlt, white, 44);
         buttonStyle(btnNext, cardAlt, white, 40);
 
         // Volume card 
@@ -197,7 +197,7 @@
         var btnMute = volumeRow.add("button", undefined, "MUTE");
         var btnVolumeUp = volumeRow.add("button", undefined, "VOLUME +");
         buttonStyle(btnVolumeDown, cardAlt, white, 34);
-        buttonStyle(btnMute, [0.16, 0.12, 0.13], [0.95, 0.72, 0.74], 34);
+        buttonStyle(btnMute, cardAlt, white, 34);
         buttonStyle(btnVolumeUp, cardAlt, white, 34);
 
         var statusRow = panel.add("group");
@@ -211,7 +211,7 @@
         var closed = false;
         var commandLocked = false;
         var lastCommandAt = 0;
-        var CLICK_COOLDOWN_MS = 500;
+        var CLICK_COOLDOWN_MS = 700;
         var controls = [btnPrevious, btnPlayPause, btnNext, btnVolumeDown, btnMute, btnVolumeUp];
 
         function setStatus(text) {
@@ -241,7 +241,7 @@
             } finally {
                 commandLocked = false;
                 badge.text = "  READY  ";
-                paint(badge, [0.10, 0.20, 0.19], accent);
+                paint(badge, cardAlt, muted);
                 for (i = 0; i < controls.length; i++) controls[i].enabled = true;
             }
             panel.layout.layout(true);
