@@ -198,9 +198,9 @@
         volumeRow.orientation = "row";
         volumeRow.alignChildren = ["fill", "center"];
         volumeRow.spacing = 7;
-        var btnVolumeDown = volumeRow.add("button", undefined, "VOLUME -");
-        var btnMute = volumeRow.add("button", undefined, "MUTE");
-        var btnVolumeUp = volumeRow.add("button", undefined, "VOLUME +");
+        var btnVolumeDown = volumeRow.add("button", undefined, "Volume Down ");
+        var btnMute = volumeRow.add("button", undefined, "Mute");
+        var btnVolumeUp = volumeRow.add("button", undefined, "Volume Up");
         buttonStyle(btnVolumeDown, cardAlt, white, 34);
         buttonStyle(btnMute, cardAlt, white, 34);
         buttonStyle(btnVolumeUp, cardAlt, white, 34);
