@@ -172,12 +172,15 @@
         playbackRow.orientation = "row";
         playbackRow.alignChildren = ["fill", "center"];
         playbackRow.spacing = 7;
-        var btnPrevious = playbackRow.add("button", undefined, "PREV");
-        var btnPlayPause = playbackRow.add("button", undefined, "PLAY / PAUSE");
-        var btnNext = playbackRow.add("button", undefined, "NEXT");
-        btnPrevious.preferredSize = [82, 40];
-        btnPlayPause.preferredSize = [148, 44];
-        btnNext.preferredSize = [82, 40];
+        var btnPrevious = playbackRow.add("button", undefined, "Previous");
+        var btnPlayPause = playbackRow.add("button", undefined, "Play / Pause");
+        var btnNext = playbackRow.add("button", undefined, "Next");
+        btnPrevious.alignment = ["fill", "center"];
+        btnPlayPause.alignment = ["fill", "center"];
+        btnNext.alignment = ["fill", "center"];
+        btnPrevious.minimumSize = [70, 40];
+        btnPlayPause.minimumSize = [120, 44];
+        btnNext.minimumSize = [70, 40];
         buttonStyle(btnPrevious, cardAlt, white, 40);
         buttonStyle(btnPlayPause, cardAlt, white, 44);
         buttonStyle(btnNext, cardAlt, white, 40);
@@ -210,7 +213,12 @@
         statusDot.graphics.font = ScriptUI.newFont("Segoe UI", "REGULAR", 10);
         pen(statusDot, accent);
         var statusText = label(statusRow, "Ready", 9, muted);
-        
+        var diagnosticsRow = panel.add("group");
+        diagnosticsRow.orientation = "row";
+        diagnosticsRow.alignChildren = ["right", "center"];
+        var btnDiagnostics = diagnosticsRow.add("button", undefined, "Test Startup");
+        btnDiagnostics.preferredSize = [92, 24];
+        btnDiagnostics.graphics.font = ScriptUI.newFont("Segoe UI", "REGULAR", 9);
         var closed = false;
         var commandLocked = false;
         var lastCommandAt = 0;
@@ -286,7 +294,7 @@
         btnMute.onClick = function () { send(0xAD, 1, "Mute toggle"); };
         btnVolumeDown.onClick = function () { send(0xAE, VOLUME_STEPS, "Volume down"); };
         btnVolumeUp.onClick = function () { send(0xAF, VOLUME_STEPS, "Volume up"); };
-
+        btnDiagnostics.onClick = runDiagnostics;
         panel.onClose = function () {
             closed = true;
         };
