@@ -210,6 +210,7 @@
         statusDot.graphics.font = ScriptUI.newFont("Segoe UI", "REGULAR", 10);
         pen(statusDot, accent);
         var statusText = label(statusRow, "Ready", 9, muted);
+        
         var closed = false;
         var commandLocked = false;
         var lastCommandAt = 0;
@@ -219,7 +220,36 @@
         function setStatus(text) {
             if (!closed) statusText.text = text;
         }
+        function runDiagnostics() {
+            var ps = new File("C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe");
+            var ws = new File("C:/Windows/System32/wscript.exe");
+            var probe = tempFile("AfterPlaylist_diagnostic.txt");
+            try {
+                if ($.os.toLowerCase().indexOf("windows") === -1) {
+                    setStatus("Setup error: Windows is required");
+                    return;
+                }
+                if (!ps.exists) {
+                    setStatus("Setup error: Powershell not found");
+                    return;
+                }
+                if (!ws.exists) {
+                    setStatus("Setup error: WScript not found");
+                    return;
+                }
+                writeFile(probe, "AfterPlaylist OK");
+                if (!probe.exists) {
+                    setStatus("Setup error: temp folder is not writable");
+                    return;
+                }
+                setStatus("Setup success: Powershell, WScript, and temp access are functiona; :D")
+            } catch (e) {
+                setStatus("Setup error:" + (e.message || String(e)));
+            } finally {
+                try { if (probe.exists) probe.remove(); } catch (ignoreProbe) {}
+            }
 
+        }
         function send(vkCode, count, description) {
             var now;
             var i;
