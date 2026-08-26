@@ -99,6 +99,11 @@
         var accent = [0.38, 0.66, 0.46];
         var white = [0.88, 0.88, 0.88];
         var muted = [0.62, 0.62, 0.62];
+        var npFile = tempFile("afterplaylist_np.txt");
+        var isFetching = false;
+        var fullSongText + "";
+        var scrollIndex = 0;
+        var SCROLL_CHAR_LIMIT = 30;
 
         panel.orientation = "column";
         panel.alignChildren = ["fill", "top"];
