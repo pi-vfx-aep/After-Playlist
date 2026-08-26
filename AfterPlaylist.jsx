@@ -1,7 +1,7 @@
-/*
-    AfterPlaylist Media Only v1.0
-    Windows-only After Effects ScriptUI panel.
-*/
+
+   //AfterPlaylist Media Only v1.0
+    
+
 (function (thisObj) {
     var VOLUME_STEPS = 2;
     var COMMAND_TIMEOUT_MS = 10000;
@@ -11,12 +11,12 @@
     }
 
     function psQuote(value) {
-      
+       
         return "'" + String(value).replace(/'/g, "''") + "'";
     }
 
     function cmdQuote(value) {
-      
+        
         return "\"" + String(value).replace(/\"/g, "\\\"") + "\"";
     }
 
@@ -43,8 +43,6 @@
     function vbsQuote(value) {
         return "\"" + String(value).replace(/\"/g, "\"\"") + "\"";
     }
-
-    // runMediaCommand
 
     function runMediaCommand(vkCode, count) {
         var id = String(new Date().getTime()) + "_" + String(Math.floor(Math.random() * 100000));
@@ -87,7 +85,7 @@
 
         writeFile(scriptFile, script);
         writeFile(launcherFile, launcher);
-      
+        
         system.callSystem("wscript.exe //B //NoLogo " + cmdQuote(launcherFile.fsName));
     }
 
@@ -99,10 +97,10 @@
         var accent = [0.38, 0.66, 0.46];
         var white = [0.88, 0.88, 0.88];
         var muted = [0.62, 0.62, 0.62];
-       
+
         var npFile = tempFile("afterplaylist_np.txt");
-        var isFetching = false;
-        var fullSongText + "";
+        var isFetchingNP = false;
+        var fullSongText = "";
         var scrollIndex = 0;
         var SCROLL_CHAR_LIMIT = 30;
 
@@ -154,14 +152,16 @@
         var titleColumn = header.add("group");
         titleColumn.orientation = "column";
         titleColumn.alignChildren = ["left", "top"];
+        titleColumn.alignment = ["fill", "center"];
         titleColumn.spacing = 1;
         var title = label(titleColumn, "AfterPlaylist", 15, white);
         title.graphics.font = ScriptUI.newFont("Segoe UI", "BOLD", 15);
         var subtitle = label(titleColumn, "MEDIA CONTROLS", 8, muted);
         var songInfo = label(titleColumn, "Fetching track...", 9, muted);
-        songInfo.alignment = ["fill", "top"]
+        songInfo.alignment = ["fill", "top"];
         var badge = header.add("statictext", undefined, "  READY  ");
         badge.alignment = "right";
+        badge.minimumSize = [60, 18];
         badge.graphics.font = ScriptUI.newFont("Segoe UI", "BOLD", 8);
         paint(badge, cardAlt, muted);
 
@@ -206,7 +206,7 @@
         volumeRow.orientation = "row";
         volumeRow.alignChildren = ["fill", "center"];
         volumeRow.spacing = 7;
-        var btnVolumeDown = volumeRow.add("button", undefined, "Volume Down ");
+        var btnVolumeDown = volumeRow.add("button", undefined, "Volume Down");
         var btnMute = volumeRow.add("button", undefined, "Mute");
         var btnVolumeUp = volumeRow.add("button", undefined, "Volume Up");
         buttonStyle(btnVolumeDown, cardAlt, white, 34);
@@ -224,9 +224,10 @@
         var diagnosticsRow = panel.add("group");
         diagnosticsRow.orientation = "row";
         diagnosticsRow.alignChildren = ["right", "center"];
-        var btnDiagnostics = diagnosticsRow.add("button", undefined, "Test Startup");
+        var btnDiagnostics = diagnosticsRow.add("button", undefined, "Test Setup");
         btnDiagnostics.preferredSize = [92, 24];
         btnDiagnostics.graphics.font = ScriptUI.newFont("Segoe UI", "REGULAR", 9);
+        paint(btnDiagnostics, cardAlt, muted);
         var closed = false;
         var commandLocked = false;
         var lastCommandAt = 0;
@@ -236,6 +237,7 @@
         function setStatus(text) {
             if (!closed) statusText.text = text;
         }
+
         function runDiagnostics() {
             var ps = new File("C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe");
             var ws = new File("C:/Windows/System32/wscript.exe");
@@ -246,7 +248,7 @@
                     return;
                 }
                 if (!ps.exists) {
-                    setStatus("Setup error: Powershell not found");
+                    setStatus("Setup error: PowerShell not found");
                     return;
                 }
                 if (!ws.exists) {
@@ -258,46 +260,45 @@
                     setStatus("Setup error: temp folder is not writable");
                     return;
                 }
-                setStatus("Setup success: Powershell, WScript, and temp access are functiona; :D")
+                setStatus("Setup OK: PowerShell, WScript, and temp access work");
             } catch (e) {
-                setStatus("Setup error:" + (e.message || String(e)));
+                setStatus("Setup error: " + (e.message || String(e)));
             } finally {
                 try { if (probe.exists) probe.remove(); } catch (ignoreProbe) {}
             }
-
         }
 
         function fetchNowPlaying() {
             if (closed || isFetchingNP) return;
             isFetchingNP = true;
+            
             var id = "np_" + String(new Date().getTime());
             var scriptFile = tempFile("AfterPlaylist_" + id + ".ps1");
             var launcherFile = tempFile("AfterPlaylist_" + id + ".vbs");
-
+            
             var script = [
                 "$ErrorActionPreference = 'Stop'",
                 "try {",
-                "   Add-Type -AssemblyName System.Runtime.WindowsRuntime",
-                "   $asTaskGeneric = ([System.WindowsRuntimeSystemExtensions].GetMethods() | Where-Object { $_.Name -eq 'AsTask' -and $_.IsGenericMethod -and $_.GetParameters().Count -eq 1 })[0]",
-                "function Await($op, $type) {",
-                "       $task = $asTaskGeneric.MakeGenericMethod($type).Invoke($null, @($op))",
-                "       $task.Wait(-1) | Out-Null",
-                "       return $task.Result",
-                "   }",
-                "   $mType = [Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager,Windows.Media.Control,ContentType=WindowsRuntime]",
-                "   $manager = Await ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager]::RequestAsync()) $mType",
-                "   $session = $manager.GetCurrentSession()",
-                "   if ($session) {",
-                "       $pType = [Windows.Media.Control.GlobalSystemMediaTransportControlsSessionMediaProperties,Windows.Media.Control,ContentType=WindowsRuntime]",
+                "    Add-Type -AssemblyName System.Runtime.WindowsRuntime",
+                "    $asTaskGeneric = ([System.WindowsRuntimeSystemExtensions].GetMethods() | Where-Object { $_.Name -eq 'AsTask' -and $_.IsGenericMethod -and $_.GetParameters().Count -eq 1 })[0]",
+                "    function Await($op, $type) {",
+                "        $task = $asTaskGeneric.MakeGenericMethod($type).Invoke($null, @($op))",
+                "        $task.Wait(-1) | Out-Null",
+                "        return $task.Result",
+                "    }",
+                "    $mType = [Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager,Windows.Media.Control,ContentType=WindowsRuntime]",
+                "    $manager = Await ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager]::RequestAsync()) $mType",
+                "    $session = $manager.GetCurrentSession()",
+                "    if ($session) {",
+                "        $pType = [Windows.Media.Control.GlobalSystemMediaTransportControlsSessionMediaProperties,Windows.Media.Control,ContentType=WindowsRuntime]",
                 "        $props = Await ($session.TryGetMediaPropertiesAsync()) $pType",
-                "   $res = $props.Artist + ' - ' + $props.Title",
-                "   } else { $res = 'Nothing playing' }",
+                "        $res = $props.Artist + ' - ' + $props.Title",
+                "    } else { $res = 'Nothing playing' }",
                 "    Set-Content -Path " + psQuote(npFile.fsName) + " -Value $res -Encoding UTF8",
                 "} catch { Set-Content -Path " + psQuote(npFile.fsName) + " -Value 'Nothing playing' -Encoding UTF8 }",
                 "Remove-Item -LiteralPath " + psQuote(scriptFile.fsName) + " -Force",
                 "Remove-Item -LiteralPath " + psQuote(launcherFile.fsName) + " -Force"
-
-            ].join ("\r\n") + "\r\n";
+            ].join("\r\n") + "\r\n";
 
             var launcher = [
                 "Dim sh",
@@ -312,36 +313,36 @@
             system.callSystem("wscript.exe //B //NoLogo " + cmdQuote(launcherFile.fsName));
         }
 
-        function checkNowPlaying() {
-            if (closed) return;
-            if (npFile.exists) {
-                try{
-                    var content = readFile(npFile);
-                    if (content && content !== fullSongText) {
-                        fullSongText = content;
-                        scrollIndex = 0;
-                        if (fullSongText.length <= SCROLL_CHAR_LIMIT) songInfo.text = fullSongText;
-
-                    }
-                    npFile.remove();
-                    panel.layout.layout(true);
-
-                } catch (e) {}
-                isFetchingNP = false;
-            }
-        }
-
         function scrollText() {
             if (closed || !fullSongText || fullSongText.length <= SCROLL_CHAR_LIMIT) {
                 if (fullSongText) songInfo.text = fullSongText;
                 return;
             }
-            var marquee = fullSongText + "  |   " + fullSongText;
+            // Looping marquee string
+            var marquee = fullSongText + "   |   " + fullSongText;
             songInfo.text = marquee.substring(scrollIndex, scrollIndex + SCROLL_CHAR_LIMIT);
             scrollIndex++;
             if (scrollIndex > fullSongText.length + 6) scrollIndex = 0;
         }
 
+        function checkNowPlaying() {
+            if (closed) return;
+            if (npFile.exists) {
+                try {
+                    var content = readFile(npFile);
+                    if (content && content !== fullSongText) {
+                        fullSongText = content;
+                        scrollIndex = 0; // Reset scroll for new song
+                        if (fullSongText.length <= SCROLL_CHAR_LIMIT) {
+                            songInfo.text = fullSongText;
+                        }
+                    }
+                    npFile.remove();
+                    panel.layout.layout(true);
+                } catch (e) {}
+                isFetchingNP = false;
+            }
+        }
 
         function send(vkCode, count, description) {
             var now;
@@ -380,7 +381,20 @@
         btnVolumeDown.onClick = function () { send(0xAE, VOLUME_STEPS, "Volume down"); };
         btnVolumeUp.onClick = function () { send(0xAF, VOLUME_STEPS, "Volume up"); };
         btnDiagnostics.onClick = runDiagnostics;
+
+        $.global.__afterPlaylistPoll = checkNowPlaying;
+        $.global.__afterPlaylistFetch = fetchNowPlaying;
+
+        $.global.__afterPlaylistScroll = scrollText;
+
+        var pollTask = app.scheduleTask("$.global.__afterPlaylistPoll()", 1000, true);
+        var fetchTask = app.scheduleTask("$.global.__afterPlaylistFetch()", 6000, true);
+        var scrollTask = app.scheduleTask("$.global.__afterPlaylistScroll()", 300, true);
+
         panel.onClose = function () {
+            app.cancelTask(pollTask);
+            app.cancelTask(fetchTask);
+            app.cancelTask(scrollTask);
             closed = true;
         };
         panel.onResizing = panel.onResize = function () {
@@ -388,24 +402,6 @@
         };
 
         panel.layout.layout(true);
-
-        $.global.__afterPlaylistPoll = checkNowPlaying;
-        $.global.__afterPlaylistFetch = fetchNowPlaying;
-        $.global.__afterPlaylistScroll = scrollText;
-
-        var pollTask =  app.scheduleTask("$.global.__afterPlaylistPoll()", 1000, true);
-        var fetchTask =  app.scheduleTask("$.global.__afterPlaylistFetch()", 6000, true);
-        var scrollTask =  app.scheduleTask("$.global.__afterPlaylistScroll()", 300, true);
-        
-        var originalOnClose = panel.OnClose;
-        panel.onClose = function() {
-            app.cancelTask(pollTask);
-            app.cancelTask(fetchTask);
-            app.cancelTask(scrollTask);
-            closed = true;
-            if (originalOnClose) originalOnClose();
-
-        };
         return panel;
     }
 
