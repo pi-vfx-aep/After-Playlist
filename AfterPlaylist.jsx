@@ -99,6 +99,7 @@
         var accent = [0.38, 0.66, 0.46];
         var white = [0.88, 0.88, 0.88];
         var muted = [0.62, 0.62, 0.62];
+       
         var npFile = tempFile("afterplaylist_np.txt");
         var isFetching = false;
         var fullSongText + "";
@@ -157,6 +158,8 @@
         var title = label(titleColumn, "AfterPlaylist", 15, white);
         title.graphics.font = ScriptUI.newFont("Segoe UI", "BOLD", 15);
         var subtitle = label(titleColumn, "MEDIA CONTROLS", 8, muted);
+        var songInfo = label(titleColumn, "Fetching track...", 9, muted);
+        songInfo.alignment = ["fill", "top"]
         var badge = header.add("statictext", undefined, "  READY  ");
         badge.alignment = "right";
         badge.graphics.font = ScriptUI.newFont("Segoe UI", "BOLD", 8);
@@ -263,6 +266,55 @@
             }
 
         }
+
+        function fetchNowPlaying() {
+            if (closed || isFetchingNP) return;
+            isFetchingNP = true;
+            var id = "np_" + String(new Date().getTime());
+            var scriptFile = tempFile("AfterPlaylist_" + id + ".ps1");
+            var launcherFile = tempFile("AfterPlaylist_" + id + ".vbs");
+
+            var script = [
+                "$ErrorActionPreference = 'Stop'",
+                "try {",
+                "   Add-Type -AssemblyName System.Runtime.WindowsRuntime",
+                "   $asTaskGeneric = ([System.WindowsRuntimeSystemExtensions].GetMethods() | Where-Object { $_.Name -eq 'AsTask' -and $_.IsGenericMethod -and $_.GetParameters().Count -eq 1 })[0]",
+                "function Await($op, $type) {",
+                "       $task = $asTaskGeneric.MakeGenericMethod($type).Invoke($null, @($op))",
+                "       $task.Wait(-1) | Out-Null",
+                "       return $task.Result",
+                "   }",
+                "   $mType = [Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager,Windows.Media.Control,ContentType=WindowsRuntime]",
+                "   $manager = Await ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager]::RequestAsync()) $mType",
+                "   $session = $manager.GetCurrentSession()",
+                "   if ($session) {",
+                "       $pType = [Windows.Media.Control.GlobalSystemMediaTransportControlsSessionMediaProperties,Windows.Media.Control,ContentType=WindowsRuntime]",
+                "        $props = Await ($session.TryGetMediaPropertiesAsync()) $pType",
+                "   $res = $props.Artist + ' - ' + $props.Title",
+                "   } else { $res = 'Nothing playing' }",
+                "    Set-Content -Path " + psQuote(npFile.fsName) + " -Value $res -Encoding UTF8",
+                "} catch { Set-Content -Path " + psQuote(npFile.fsName) + " -Value 'Nothing playing' -Encoding UTF8 }",
+                "Remove-Item -LiteralPath " + psQuote(scriptFile.fsName) + " -Force",
+                "Remove-Item -LiteralPath " + psQuote(launcherFile.fsName) + " -Force"
+
+            ].join ("\r\n") + "\r\n";
+
+            var launcher = [
+                "Dim sh",
+                "Set sh = CreateObject(\"WScript.Shell\")",
+                "cmd = " + vbsQuote("C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File ") + " & Chr(34) & " + vbsQuote(scriptFile.fsName) + " & Chr(34)",
+                "sh.Run cmd, 0, False",
+                "Set sh = Nothing"
+            ].join("\r\n") + "\r\n";
+
+            writeFile(scriptFile, script);
+            writeFile(launcherFile, launcher);
+            system.callSystem("wscript.exe //B //NoLogo " + cmdQuote(launcherFile.fsName));
+        }
+
+        
+
+
         function send(vkCode, count, description) {
             var now;
             var i;
