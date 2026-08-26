@@ -312,7 +312,35 @@
             system.callSystem("wscript.exe //B //NoLogo " + cmdQuote(launcherFile.fsName));
         }
 
-        
+        function checkNowPlaying() {
+            if (closed) return;
+            if (npFile.exists) {
+                try{
+                    var content = readFile(npFile);
+                    if (content && content !== fullSongText) {
+                        fullSongText = content;
+                        scrollIndex = 0;
+                        if (fullSongText.length <= SCROLL_CHAR_LIMIT) songInfo.text = fullSongText;
+
+                    }
+                    npFile.remove();
+                    panel.layout.layout(true);
+
+                } catch (e) {}
+                isFetchingNP = false;
+            }
+        }
+
+        function scrollText() {
+            if (closed || !fullSongText || fullSongText.length <= SCROLL_CHAR_LIMIT) {
+                if (fullSongText) songInfo.text = fullSongText;
+                return;
+            }
+            var marquee = fullSongText + "  |   " + fullSongText;
+            songInfo.text = marquee.substring(scrollIndex, scrollIndex + SCROLL_CHAR_LIMIT);
+            scrollIndex++;
+            if (scrollIndex > fullSongText.length + 6) scrollIndex = 0;
+        }
 
 
         function send(vkCode, count, description) {
@@ -360,6 +388,24 @@
         };
 
         panel.layout.layout(true);
+
+        $.global.__afterPlaylistPoll = checkNowPlaying;
+        $.global.__afterPlaylistFetch = fetchNowPlaying;
+        $.global.__afterPlaylistScroll = scrollText;
+
+        var pollTask =  app.scheduleTask("$.global.__afterPlaylistPoll()", 1000, true);
+        var fetchTask =  app.scheduleTask("$.global.__afterPlaylistFetch()", 6000, true);
+        var scrollTask =  app.scheduleTask("$.global.__afterPlaylistScroll()", 300, true);
+        
+        var originalOnClose = panel.OnClose;
+        panel.onClose = function() {
+            app.cancelTask(pollTask);
+            app.cancelTask(fetchTask);
+            app.cancelTask(scrollTask);
+            closed = true;
+            if (originalOnClose) originalOnClose();
+
+        };
         return panel;
     }
 
