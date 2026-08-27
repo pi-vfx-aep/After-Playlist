@@ -13,6 +13,7 @@ After Playlist is an After Effects Script UI Panel that embeds media controls di
 4. Resizable buttons to a certain length so no need to worry about the buttons cutting off when you resize the window. (v2.1.0+)
 5. Startup Diagnostics test: Don't know if the script can run? Don't know why it wont work? Run the diagnostics test to find out! (v2.1.0+)
 6. Now features a "Now Playing" at the top that shows the artist name and song name! (v3.0.0+)
+7. New compact mode and launch spotify buttons! (v4.0.0+)
 
 ##  Installation
 1. Open **After Effects**.
