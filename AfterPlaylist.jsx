@@ -165,7 +165,7 @@
         badge.graphics.font = ScriptUI.newFont("Segoe UI", "BOLD", 8);
         paint(badge, cardAlt, muted);
 
-        divider(panel);
+        var dividerLine = divider(panel);
 
         // Playback card
         var playbackPanel = panel.add("panel");
@@ -234,6 +234,20 @@
         var lastCommandAt = 0;
         var CLICK_COOLDOWN_MS = 700;
         var controls = [btnPrevious, btnPlayPause, btnNext, btnVolumeDown, btnMute, btnVolumeUp];
+        var isCompact = false;
+
+        function toggleCompact() {
+            isCompact = !isCompact;
+
+            mark.visible = !isCompact;
+            title.visible = !isCompact;
+            songInfo.visible = !isCompact;
+            dividerLine.visible = !isCompact;
+
+            paint(btnCompact, cardAlt. isCompact ? accent: muted)
+
+            panel.layout.layout(true);
+        }
 
         function setStatus(text) {
             if (!closed) statusText.text = text;
