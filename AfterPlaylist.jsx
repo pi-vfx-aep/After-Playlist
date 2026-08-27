@@ -221,6 +221,7 @@
         statusDot.graphics.font = ScriptUI.newFont("Segoe UI", "REGULAR", 10);
         pen(statusDot, accent);
         var statusText = label(statusRow, "Ready", 9, muted);
+        statusText.alignment = ["fill", "center"];
         var diagnosticsRow = panel.add("group");
         diagnosticsRow.orientation = "row";
         diagnosticsRow.alignChildren = ["right", "center"];
@@ -265,6 +266,33 @@
                 setStatus("Setup error: " + (e.message || String(e)));
             } finally {
                 try { if (probe.exists) probe.remove(); } catch (ignoreProbe) {}
+            }
+        }
+
+        function openSpotify() {
+            if (closed) return;
+            try {
+                setStatus("Launching Spotify...");
+                var id = "launch_" + String(new Date().getTime());
+                var sF = tempFile("ap_launch_" + id + ".ps1");
+                var lF = tempFile("ap_launch_" + id + ".vbs");
+                //Spotify protocol because it works for all spotify versions :)
+                var s + "Start-Process 'spotify:'";
+
+                var l = [
+                    "Dim sh: Set sh = CreateObject(\"WScript.Shell\")",
+                    "cmd = \"powershell.exe -NoLogo -NoProfile - NonInteractive - ExecutionPolicy Bypass -WindowStyle Hidden -File \" & Chr(34) & " + vbsQuote(sF.fsName) + "& Chr(34)",
+                    "sh.Run cmd, 0, False"
+                ].join("\r\n");
+
+                writeFile(sF, s); writeFile(lF, l);
+
+                // Im gonna launch this asyncrhonously so AE dont gotta wait
+                system.callSystem("wscript.exe //B //NoLogo " + cmdQuote(lF.fsName));
+                setStatus("Spotify launched");
+
+            } catch (e) {
+                setStatus("Error:" + e.message);
             }
         }
 
