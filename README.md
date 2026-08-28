@@ -1,6 +1,9 @@
 # After-Playlist
 > Tired of switching between After Effects and Spotify? After Playlist is a script UI panel in AE that lets you perform media controls directly inside AE!
 
+DEMO:
+[![Watch the video](https://img.youtube.com/vi/aKbW0X-AGvw/maxresdefault.jpg)](https://www.youtube.com/watch?v=aKbW0X-AGvw)
+
 ## The Problem It Solves
 Many editors have a state they reach called the **flow state,** a time where editors are completely focus on what they are making resulting in higher efficiency. One of the major contributors to this state is music. Music allows people to relax and forget about their surrounding. 
 
