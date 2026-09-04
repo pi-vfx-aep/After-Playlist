@@ -33,25 +33,25 @@
 
     function buildUI(thisObj) {
         var panel = (thisObj instanceof Panel) ? thisObj : new Window("palette", "AfterPlaylist", undefined, { resizable: true });
-        var bg = [0.12, 0.12, 0.12], card = [0.16, 0.16, 0.16], cardAlt = [0.20, 0.20, 0.20];
-        var accent = [0.38, 0.66, 0.46], white = [0.88, 0.88, 0.88], muted = [0.62, 0.62, 0.62];
-
+        var bg = [0.10, 0.10, 0.10], card = [0.14, 0.14, 0.14], cardAlt = [0.18, 0.18, 0.18];
+        var accent = [0.38, 0.66, 0.46], white = [0.92, 0.92, 0.92], muted = [0.55, 0.55, 0.55];
+        
         function brush(c, clr) { try { c.graphics.backgroundColor = c.graphics.newBrush(c.graphics.BrushType.SOLID_COLOR, clr); } catch(e) {} }
         function pen(c, clr) { try { c.graphics.foregroundColor = c.graphics.newPen(c.graphics.PenType.SOLID_COLOR, clr, 1); } catch(e) {} }
         function paint(c, b, f) { brush(c, b); pen(c, f); }
-        function label(p, t, s, clr) {
+
+        function label(p, t, s, clr, bld) {
             var i = p.add("statictext", undefined, t);
-            i.graphics.font = ScriptUI.newFont("Segoe UI", "REGULAR", s);
+            i.graphics.font = ScriptUI.newFont("Segoe UI", bld ? "BOLD" : "REGULAR", s);
             pen(i, clr); return i;
         }
-        function buttonStyle(b, bg, fg, h) {
-            b.preferredSize.height = h || 34;
+
+        function styleBtn(b, type, h) {
+            b.preferredSize.height = h || 32;
             b.graphics.font = ScriptUI.newFont("Segoe UI", "BOLD", 10);
-            paint(b, bg, fg);
-        }
-        function divider(p) {
-            var l = p.add("panel"); l.preferredSize.height = 1;
-            brush(l, [0.16, 0.19, 0.21]); return l;
+            if (type === "primary") paint(b, accent, bg);
+            else if (type === "secondary") paint(b, cardAlt, white);
+            else paint(b, card, muted);
         }
 
         panel.orientation = "column"; panel.alignChildren = ["fill", "top"];
