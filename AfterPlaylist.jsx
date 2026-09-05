@@ -1,4 +1,5 @@
-//AfterPlaylist 4.0.0
+//AfterPlaylist 4.1.0
+
 
 (function (thisObj) {
     function tempFile(name) { return new File(Folder.temp.fsName + "/" + name); }
@@ -33,13 +34,15 @@
 
     function buildUI(thisObj) {
         var panel = (thisObj instanceof Panel) ? thisObj : new Window("palette", "AfterPlaylist", undefined, { resizable: true });
+        
+        //colors and helpers
         var bg = [0.10, 0.10, 0.10], card = [0.14, 0.14, 0.14], cardAlt = [0.18, 0.18, 0.18];
         var accent = [0.38, 0.66, 0.46], white = [0.92, 0.92, 0.92], muted = [0.55, 0.55, 0.55];
-        
+
         function brush(c, clr) { try { c.graphics.backgroundColor = c.graphics.newBrush(c.graphics.BrushType.SOLID_COLOR, clr); } catch(e) {} }
         function pen(c, clr) { try { c.graphics.foregroundColor = c.graphics.newPen(c.graphics.PenType.SOLID_COLOR, clr, 1); } catch(e) {} }
         function paint(c, b, f) { brush(c, b); pen(c, f); }
-
+        
         function label(p, t, s, clr, bld) {
             var i = p.add("statictext", undefined, t);
             i.graphics.font = ScriptUI.newFont("Segoe UI", bld ? "BOLD" : "REGULAR", s);
@@ -54,68 +57,76 @@
             else paint(b, card, muted);
         }
 
+        //header
         panel.orientation = "column"; panel.alignChildren = ["fill", "top"];
-        panel.spacing = 10; panel.margins = 14; paint(panel, bg, white);
-
-        // Header
-        panel.orientation = "column"; panel.orientation = ["fill", "top"];
         panel.spacing = 12; panel.margins = 16; paint(panel, bg, white);
 
         var utilBar = panel.add("group");
         utilBar.orientation = "row"; utilBar.alignChildren = ["left", "center"];
         label(utilBar, "AFTERPLAYLIST", 9, muted, true);
-
+        
         var spacer = utilBar.add("group"); spacer.alignment = ["fill", "center"];
-
-        var btnSpotify = utilBar.add("button", undefined, "S")
+        
+        var btnSpotify = utilBar.add("button", undefined, "S");
         btnSpotify.preferredSize = [22, 22]; styleBtn(btnSpotify, "utility");
-
+        btnSpotify.helpTip = "Open Spotify";
+        
         var btnCompact = utilBar.add("button", undefined, "C");
         btnCompact.preferredSize = [22, 22]; styleBtn(btnCompact, "utility");
+        btnCompact.helpTip = "Toggle Compact Mode";
 
         var heroCard = panel.add("panel");
         heroCard.orientation = "column"; heroCard.alignChildren = ["center", "center"];
         heroCard.margins = [20, 24, 20, 24];
         paint(heroCard, card, white);
-
-        var trackTitle = label(heroCard, "Now Playing", 9, accent, true);
-        var songInfo = label(heroCard, "Fetching..."m 16, white, true);
+        
+        label(heroCard, "Now Playing", 9, accent, true);
+        var songInfo = label(heroCard, "Fetching...", 16, white, true);
         songInfo.alignment = ["fill", "center"];
         songInfo.justify = "center";
 
-        // Playback
-        var playbackPanel = panel.add("panel");
-        playbackPanel.orientation = "column"; playbackPanel.alignChildren = ["fill", "top"]; playbackPanel.margins = 12; playbackPanel.spacing = 8;
-        paint(playbackPanel, card, white);
-        var playbackRow = playbackPanel.add("group");
-        playbackRow.orientation = "row"; playbackRow.alignChildren = ["fill", "center"]; playbackRow.spacing = 7;
+        //playback and volume
+        var controlsGroup = panel.add("group");
+        controlsGroup.orientation = "column"; controlsGroup.alignChildren = ["fill", "top"];
+        controlsGroup.spacing = 16;
+
+        var playbackRow = controlsGroup.add("group");
+        playbackRow.orientation = "row"; playbackRow.alignChildren = ["fill", "center"];
+        playbackRow.spacing = 8;
+
         var btnPrev = playbackRow.add("button", undefined, "Previous");
         var btnPP = playbackRow.add("button", undefined, "Play / Pause");
         var btnNext = playbackRow.add("button", undefined, "Next");
-        buttonStyle(btnPrev, cardAlt, white, 40); buttonStyle(btnPP, cardAlt, white, 44); buttonStyle(btnNext, cardAlt, white, 40);
 
-        // Volume Card
-        var volumePanel = panel.add("panel");
-        volumePanel.orientation = "column"; volumePanel.alignChildren = ["fill", "top"]; volumePanel.margins = 12; volumePanel.spacing = 8;
-        paint(volumePanel, card, white);
-        var volumeRow = volumePanel.add("group");
-        volumeRow.orientation = "row"; volumeRow.alignChildren = ["fill", "center"]; volumeRow.spacing = 7;
-        var btnVolD = volumeRow.add("button", undefined, "Volume -");
+        styleBtn(btnPrev, "secondary", 38);
+        styleBtn(btnPP, "primary", 46);
+        styleBtn(btnNext, "secondary", 38);
+
+        var volumeRow = controlsGroup.add("group");
+        volumeRow.orientation = "row"; volumeRow.alignChildren = ["fill", "center"];
+        volumeRow.spacing = 6;
+
+        var btnVolD = volumeRow.add("button", undefined, "-");
         var btnMute = volumeRow.add("button", undefined, "Mute");
-        var btnVolU = volumeRow.add("button", undefined, "Volume +");
-        buttonStyle(btnVolD, cardAlt, white, 34); buttonStyle(btnMute, cardAlt, white, 34); buttonStyle(btnVolU, cardAlt, white, 34);
+        var btnVolU = volumeRow.add("button", undefined, "+");
 
-        // Status
-        var statusRow = panel.add("group");
-        statusRow.orientation = "row"; statusRow.alignChildren = ["left", "center"]; statusRow.spacing = 6;
-        var statusDot = label(statusRow, "●", 10, accent);
-        var statusText = label(statusRow, "Ready", 9, muted);
+        styleBtn(btnVolD, "utility", 28);
+        styleBtn(btnMute, "secondary", 28);
+        styleBtn(btnVolU, "utility", 28);
+
+        //the footer and status
+        var footer = panel.add("group");
+        footer.orientation = "row"; footer.alignChildren = ["left", "center"];
+        footer.spacing = 8;
+
+        var statusDot = label(footer, "●", 8, accent);
+        var statusText = label(footer, "Ready", 8, muted);
         statusText.alignment = ["fill", "center"];
-        var btnDiag = panel.add("button", undefined, "Test Setup");
-        btnDiag.preferredSize = [92, 24]; btnDiag.graphics.font = ScriptUI.newFont("Segoe UI", "REGULAR", 9);
-        paint(btnDiag, cardAlt, muted);
+        
+        var btnDiag = footer.add("button", undefined, "Diagnostics");
+        btnDiag.preferredSize = [80, 20]; styleBtn(btnDiag, "utility");
 
-        //logic
+        // Logic
         var closed = false, lastCommandAt = 0, CLICK_COOLDOWN = 700, isCompact = false;
         var npFile = tempFile("afterplaylist_np.txt"), isFetchingNP = false, fullSongText = "", scrollIndex = 0, LIMIT = 30;
 
@@ -130,9 +141,10 @@
 
         function toggleCompact() {
             isCompact = !isCompact;
-            mark.visible = !isCompact; title.visible = !isCompact; songInfo.visible = !isCompact;
-            volumePanel.visible = !isCompact; dividerLine.visible = !isCompact;
-            paint(btnCompact, cardAlt, isCompact ? accent : muted);
+            heroCard.visible = !isCompact;
+            volumeRow.visible = !isCompact;
+            footer.visible = !isCompact;
+            btnPP.preferredSize.height = isCompact ? 34 : 46;
             panel.layout.layout(true);
         }
 
@@ -187,7 +199,6 @@
             scrollIndex++; if (scrollIndex > fullSongText.length + 6) scrollIndex = 0;
         }
 
-        //button handlers
         btnPP.onClick = function() { send(0xB3, 1, "Play/Pause"); };
         btnPrev.onClick = function() { send(0xB1, 1, "Prev"); };
         btnNext.onClick = function() { send(0xB0, 1, "Next"); };
@@ -198,7 +209,6 @@
         btnSpotify.onClick = openSpotify;
         btnCompact.onClick = toggleCompact;
 
-        //bg timers
         $.global.__apPoll = checkNowPlaying; $.global.__apFetch = fetchNowPlaying; $.global.__apScroll = scrollText;
         var pT = app.scheduleTask("$.global.__apPoll()", 1000, true);
         var fT = app.scheduleTask("$.global.__apFetch()", 6000, true);
