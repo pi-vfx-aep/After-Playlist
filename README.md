@@ -18,6 +18,7 @@ After Playlist is an After Effects Script UI Panel that embeds media controls di
 5. Startup Diagnostics test: Don't know if the script can run? Don't know why it wont work? Run the diagnostics test to find out! (v2.1.0+)
 6. Now features a "Now Playing" at the top that shows the artist name and song name! (v3.0.0+)
 7. New compact mode and launch spotify buttons! (v4.0.0+)
+8. Now works for ALL media playing on the device! (v4.1.0+)
 
 ##  Installation
 1. Open **After Effects**.
@@ -35,7 +36,6 @@ After Playlist is an After Effects Script UI Panel that embeds media controls di
    * Click the After Playlist file (May need to scroll down)
    * Begin using it!
 
-    'Note:' This script only works with the desktop version of Spotify and other possible supported apps. It also takes a while for it to run after pressing the button so please have patience! 
 
 ## Challenges
 Honestly the biggest challenge was figuring out how to make it work. ExtendScript doesn't natively support asynchronous Windows APIs so I had to learn to build a simple Powershell bridge to run windows commands.
