@@ -58,28 +58,30 @@
         panel.spacing = 10; panel.margins = 14; paint(panel, bg, white);
 
         // Header
-        var header = panel.add("group");
-        header.orientation = "row"; header.alignChildren = ["left", "center"]; header.spacing = 10;
-        var mark = header.add("panel"); mark.preferredSize = [8, 34]; brush(mark, accent);
-        var titleCol = header.add("group");
-        titleCol.orientation = "column"; titleCol.alignChildren = ["left", "top"]; titleCol.alignment = ["fill", "center"]; titleCol.spacing = 1;
-        var title = label(titleCol, "AfterPlaylist", 15, white); title.graphics.font = ScriptUI.newFont("Segoe UI", "BOLD", 15);
-        var songInfo = label(titleCol, "Fetching track...", 9, muted); songInfo.alignment = ["fill", "top"];
+        panel.orientation = "column"; panel.orientation = ["fill", "top"];
+        panel.spacing = 12; panel.margins = 16; paint(panel, bg, white);
 
-        var btnSpotify = header.add("button", undefined, "S");
-        btnSpotify.preferredSize = [24, 24]; btnSpotify.graphics.font = ScriptUI.newFont("Segoe UI", "BOLD", 10);
-        paint(btnSpotify, cardAlt, accent); btnSpotify.helpTip = "Open Spotify";
+        var utilBar = panel.add("group");
+        utilBar.orientation = "row"; utilBar.alignChildren = ["left", "center"];
+        label(utilBar, "AFTERPLAYLIST", 9, muted, true);
 
-        var btnCompact = header.add("button", undefined, "C");
-        btnCompact.preferredSize = [24, 24]; btnCompact.graphics.font = ScriptUI.newFont("Segoe UI", "BOLD", 10);
-        paint(btnCompact, cardAlt, muted); btnCompact.helpTip = "Toggle Compact Mode";
+        var spacer = utilBar.add("group"); spacer.alignment = ["fill", "center"];
 
-        var badge = header.add("statictext", undefined, "  READY  ");
-        badge.alignment = "right"; badge.minimumSize = [60, 18];
-        badge.graphics.font = ScriptUI.newFont("Segoe UI", "BOLD", 8);
-        paint(badge, cardAlt, muted);
+        var btnSpotify = utilBar.add("button", undefined, "S")
+        btnSpotify.preferredSize = [22, 22]; styleBtn(btnSpotify, "utility");
 
-        var dividerLine = divider(panel);
+        var btnCompact = utilBar.add("button", undefined, "C");
+        btnCompact.preferredSize = [22, 22]; styleBtn(btnCompact, "utility");
+
+        var heroCard = panel.add("panel");
+        heroCard.orientation = "column"; heroCard.alignChildren = ["center", "center"];
+        heroCard.margins = [20, 24, 20, 24];
+        paint(heroCard, card, white);
+
+        var trackTitle = label(heroCard, "Now Playing", 9, accent, true);
+        var songInfo = label(heroCard, "Fetching..."m 16, white, true);
+        songInfo.alignment = ["fill", "center"];
+        songInfo.justify = "center";
 
         // Playback
         var playbackPanel = panel.add("panel");
