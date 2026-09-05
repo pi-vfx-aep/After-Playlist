@@ -1,5 +1,5 @@
-//AfterPlaylist 4.1.0
-
+//AfterPlaylist 4.2.0
+// ui updates :D
 
 (function (thisObj) {
     function tempFile(name) { return new File(Folder.temp.fsName + "/" + name); }
@@ -35,13 +35,13 @@
     function buildUI(thisObj) {
         var panel = (thisObj instanceof Panel) ? thisObj : new Window("palette", "AfterPlaylist", undefined, { resizable: true });
         
-        //colors and helpers
-        var bg = [0.03, 0.03, 0.03];
-        var card = [0.06, 0.06, 0.06];
-        var cardAlt = [0.10, 0.10, 0.10];
-        var accent = [0.11, 0.72, 0.33];
-        var white = [0.95, 0.95, 0.95];
-        var muted = [0.40, 0.40, 0.40];
+        // pallette
+        var bg = [0.03, 0.03, 0.03];      
+        var card = [0.06, 0.06, 0.06];    
+        var cardAlt = [0.10, 0.10, 0.10]; 
+        var accent = [0.11, 0.72, 0.33];  
+        var white = [0.95, 0.95, 0.95];   
+        var muted = [0.40, 0.40, 0.40];   
 
         function brush(c, clr) { try { c.graphics.backgroundColor = c.graphics.newBrush(c.graphics.BrushType.SOLID_COLOR, clr); } catch(e) {} }
         function pen(c, clr) { try { c.graphics.foregroundColor = c.graphics.newPen(c.graphics.PenType.SOLID_COLOR, clr, 1); } catch(e) {} }
@@ -56,21 +56,12 @@
         function styleBtn(b, type, h) {
             b.preferredSize.height = h || 32;
             b.graphics.font = ScriptUI.newFont("Segoe UI", "BOLD", type === "primary" ? 14 : 10);
-            if (type === "primary") {
-                paint(b, accent, bg);
-            } else if (type === "secondary") {
-                paint(b, cardAlt, white);
-            } else {
-                paint(b, bg, muted);
-            }
+            if (type === "primary") paint(b, accent, bg);
+            else if (type === "secondary") paint(b, cardAlt, white);
+            else paint(b, bg, muted);
         }
 
-        var heroCard = panel.add("panel");
-        heroCard.orientation = "column"; heroCard.alignChildren = ["center", "center"];
-        heroCard.margins = [20, 30, 20, 30];
-        paint(heroCard, card, white);
-
-        //header
+        // header and hero
         panel.orientation = "column"; panel.alignChildren = ["fill", "top"];
         panel.spacing = 12; panel.margins = 16; paint(panel, bg, white);
 
@@ -90,11 +81,11 @@
 
         var heroCard = panel.add("panel");
         heroCard.orientation = "column"; heroCard.alignChildren = ["center", "center"];
-        heroCard.margins = [20, 24, 20, 24];
+        heroCard.margins = [20, 30, 20, 30];
         paint(heroCard, card, white);
         
-        label(heroCard, "Now Playing:", 8, accent, true);
-        var songInfo = label(heroCard, "Fetching...", 18, white, true);
+        label(heroCard, "TRACKING NOW", 8, accent, true);
+        var songInfo = label(heroCard, "Fetching track...", 18, white, true);
         songInfo.alignment = ["fill", "center"];
         songInfo.justify = "center";
 
@@ -108,7 +99,7 @@
         playbackRow.spacing = 8;
 
         var btnPrev = playbackRow.add("button", undefined, "◀◀");
-        var btnPP = playbackRow.add("button", undefined, "▶ Ⅱ");
+        var btnPP = playbackRow.add("button", undefined, "▶  Ⅱ");
         var btnNext = playbackRow.add("button", undefined, "▶▶");
 
         styleBtn(btnPrev, "secondary", 38);
@@ -119,7 +110,7 @@
         volumeRow.orientation = "row"; volumeRow.alignChildren = ["fill", "center"];
         volumeRow.spacing = 6;
 
-        var btnVolD = volumeRow.add("button", undefined, "-");
+        var btnVolD = volumeRow.add("button", undefined, "−");
         var btnMute = volumeRow.add("button", undefined, "✕");
         var btnVolU = volumeRow.add("button", undefined, "+");
 
@@ -127,7 +118,7 @@
         styleBtn(btnMute, "secondary", 28);
         styleBtn(btnVolU, "utility", 28);
 
-        //the footer and status
+        // Footer and status
         var footer = panel.add("group");
         footer.orientation = "row"; footer.alignChildren = ["left", "center"];
         footer.spacing = 8;
@@ -136,7 +127,7 @@
         var statusText = label(footer, "Ready", 8, muted);
         statusText.alignment = ["fill", "center"];
         
-        var btnDiag = footer.add("button", undefined, "Diagnostics");
+        var btnDiag = footer.add("button", undefined, "DIAGNOSTICS");
         btnDiag.preferredSize = [80, 20]; styleBtn(btnDiag, "utility");
 
         // Logic
