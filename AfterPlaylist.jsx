@@ -36,8 +36,12 @@
         var panel = (thisObj instanceof Panel) ? thisObj : new Window("palette", "AfterPlaylist", undefined, { resizable: true });
         
         //colors and helpers
-        var bg = [0.10, 0.10, 0.10], card = [0.14, 0.14, 0.14], cardAlt = [0.18, 0.18, 0.18];
-        var accent = [0.38, 0.66, 0.46], white = [0.92, 0.92, 0.92], muted = [0.55, 0.55, 0.55];
+        var bg = [0.03, 0.03, 0.03];
+        var card = [0.06, 0.06, 0.06];
+        var cardAlt = [0.10, 0.10, 0.10];
+        var accent = [0.11, 0.72, 0.33];
+        var white = [0.95, 0.95, 0.95];
+        var muted = [0.40, 0.40, 0.40];
 
         function brush(c, clr) { try { c.graphics.backgroundColor = c.graphics.newBrush(c.graphics.BrushType.SOLID_COLOR, clr); } catch(e) {} }
         function pen(c, clr) { try { c.graphics.foregroundColor = c.graphics.newPen(c.graphics.PenType.SOLID_COLOR, clr, 1); } catch(e) {} }
@@ -67,11 +71,11 @@
         
         var spacer = utilBar.add("group"); spacer.alignment = ["fill", "center"];
         
-        var btnSpotify = utilBar.add("button", undefined, "S");
+        var btnSpotify = utilBar.add("button", undefined, "◈");
         btnSpotify.preferredSize = [22, 22]; styleBtn(btnSpotify, "utility");
         btnSpotify.helpTip = "Open Spotify";
         
-        var btnCompact = utilBar.add("button", undefined, "C");
+        var btnCompact = utilBar.add("button", undefined, "▢");
         btnCompact.preferredSize = [22, 22]; styleBtn(btnCompact, "utility");
         btnCompact.helpTip = "Toggle Compact Mode";
 
@@ -94,9 +98,9 @@
         playbackRow.orientation = "row"; playbackRow.alignChildren = ["fill", "center"];
         playbackRow.spacing = 8;
 
-        var btnPrev = playbackRow.add("button", undefined, "Previous");
-        var btnPP = playbackRow.add("button", undefined, "Play / Pause");
-        var btnNext = playbackRow.add("button", undefined, "Next");
+        var btnPrev = playbackRow.add("button", undefined, "◀◀");
+        var btnPP = playbackRow.add("button", undefined, "▶ Ⅱ");
+        var btnNext = playbackRow.add("button", undefined, "▶▶");
 
         styleBtn(btnPrev, "secondary", 38);
         styleBtn(btnPP, "primary", 46);
@@ -107,7 +111,7 @@
         volumeRow.spacing = 6;
 
         var btnVolD = volumeRow.add("button", undefined, "-");
-        var btnMute = volumeRow.add("button", undefined, "Mute");
+        var btnMute = volumeRow.add("button", undefined, "✕");
         var btnVolU = volumeRow.add("button", undefined, "+");
 
         styleBtn(btnVolD, "utility", 28);
