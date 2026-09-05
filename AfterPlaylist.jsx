@@ -55,11 +55,20 @@
 
         function styleBtn(b, type, h) {
             b.preferredSize.height = h || 32;
-            b.graphics.font = ScriptUI.newFont("Segoe UI", "BOLD", 10);
-            if (type === "primary") paint(b, accent, bg);
-            else if (type === "secondary") paint(b, cardAlt, white);
-            else paint(b, card, muted);
+            b.graphics.font = ScriptUI.newFont("Segoe UI", "BOLD", type === "primary" ? 14 : 10);
+            if (type === "primary") {
+                paint(b, accent, bg);
+            } else if (type === "secondary") {
+                paint(b, cardAlt, white);
+            } else {
+                paint(b, bg, muted);
+            }
         }
+
+        var heroCard = panel.add("panel");
+        heroCard.orientation = "column"; heroCard.alignChildren = ["center", "center"];
+        heroCard.margins = [20, 30, 20, 30];
+        paint(heroCard, card, white);
 
         //header
         panel.orientation = "column"; panel.alignChildren = ["fill", "top"];
@@ -84,8 +93,8 @@
         heroCard.margins = [20, 24, 20, 24];
         paint(heroCard, card, white);
         
-        label(heroCard, "Now Playing", 9, accent, true);
-        var songInfo = label(heroCard, "Fetching...", 16, white, true);
+        label(heroCard, "Now Playing:", 8, accent, true);
+        var songInfo = label(heroCard, "Fetching...", 18, white, true);
         songInfo.alignment = ["fill", "center"];
         songInfo.justify = "center";
 
