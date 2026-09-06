@@ -68,28 +68,18 @@
         var utilBar = panel.add("group");
         utilBar.orientation = "row"; utilBar.alignChildren = ["left", "center"];
         label(utilBar, "AFTERPLAYLIST", 9, muted, true);
-        
+
         var spacer = utilBar.add("group"); spacer.alignment = ["fill", "center"];
-        
+
         var btnSpotify = utilBar.add("button", undefined, "◈");
         btnSpotify.preferredSize = [22, 22]; styleBtn(btnSpotify, "utility");
         btnSpotify.helpTip = "Open Spotify";
-        
+
         var btnCompact = utilBar.add("button", undefined, "▢");
         btnCompact.preferredSize = [22, 22]; styleBtn(btnCompact, "utility");
         btnCompact.helpTip = "Toggle Compact Mode";
 
-        var heroCard = panel.add("panel");
-        heroCard.orientation = "column"; heroCard.alignChildren = ["center", "center"];
-        heroCard.margins = [20, 30, 20, 30];
-        paint(heroCard, card, white);
-        
-        label(heroCard, "TRACKING NOW", 8, accent, true);
-        var songInfo = label(heroCard, "Fetching track...", 18, white, true);
-        songInfo.alignment = ["fill", "center"];
-        songInfo.justify = "center";
-
-        //playback and volume
+        // Playback 
         var controlsGroup = panel.add("group");
         controlsGroup.orientation = "column"; controlsGroup.alignChildren = ["fill", "top"];
         controlsGroup.spacing = 16;
@@ -105,6 +95,16 @@
         styleBtn(btnPrev, "secondary", 38);
         styleBtn(btnPP, "primary", 46);
         styleBtn(btnNext, "secondary", 38);
+
+        var heroCard = panel.add("panel");
+        heroCard.orientation = "column"; heroCard.alignChildren = ["center", "center"];
+        heroCard.margins = [20, 30, 20, 30];
+        paint(heroCard, card, white);
+
+        var stateLabel = label(heroCard, "READY", 8, accent, true);
+        var songInfo = label(heroCard, "Waiting for a track...", 18, white, true);
+        songInfo.alignment = ["fill", "center"];
+        songInfo.justify = "center";
 
         var volumeRow = controlsGroup.add("group");
         volumeRow.orientation = "row"; volumeRow.alignChildren = ["fill", "center"];
@@ -133,8 +133,17 @@
         // Logic
         var closed = false, lastCommandAt = 0, CLICK_COOLDOWN = 700, isCompact = false;
         var npFile = tempFile("afterplaylist_np.txt"), isFetchingNP = false, fullSongText = "", scrollIndex = 0, LIMIT = 30;
+        var fetchStartedAt = 0, FETCH_TIMEOUT = 12000;
 
         function setStatus(text) { if (!closed) statusText.text = text; }
+
+        function setPlaybackState(state, color, detail) {
+            if (closed) return;
+            stateLabel.text = state;
+            pen(stateLabel, color || accent);
+            if (detail) setStatus(detail);
+            panel.layout.layout(true);
+        }
 
         function send(vk, count, desc) {
             var now = new Date().getTime();
@@ -148,8 +157,12 @@
             heroCard.visible = !isCompact;
             volumeRow.visible = !isCompact;
             footer.visible = !isCompact;
+            controlsGroup.spacing = isCompact ? 0 : 16;
             btnPP.preferredSize.height = isCompact ? 34 : 46;
+            btnCompact.text = isCompact ? "▣" : "▢";
+            btnCompact.helpTip = isCompact ? "Exit Compact Mode" : "Toggle Compact Mode";
             panel.layout.layout(true);
+            panel.layout.resize();
         }
 
         function openSpotify() {
@@ -176,24 +189,47 @@
         }
 
         function fetchNowPlaying() {
-            if (closed || isFetchingNP || isCompact) return;
+            if (closed || isFetchingNP) return;
             isFetchingNP = true;
+            fetchStartedAt = new Date().getTime();
+            setPlaybackState("FETCHING", [0.95, 0.75, 0.20], "Checking the active media session...");
             var id = "np_" + String(new Date().getTime());
             var sF = tempFile("ap_np_" + id + ".ps1"), lF = tempFile("ap_np_" + id + ".vbs");
-            var s = ["$ErrorActionPreference = 'Stop'", "try {", " Add-Type -AssemblyName System.Runtime.WindowsRuntime", " $asTask = ([System.WindowsRuntimeSystemExtensions].GetMethods() | Where-Object { $_.Name -eq 'AsTask' -and $_.IsGenericMethod -and $_.GetParameters().Count -eq 1 })[0]", " function Await($op, $type) { $t = $asTask.MakeGenericMethod($type).Invoke($null, @($op)); $t.Wait(-1) | Out-Null; return $t.Result }", " $mType = [Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager,Windows.Media.Control,ContentType=WindowsRuntime]", " $mgr = Await ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager]::RequestAsync()) $mType", " $s = $mgr.GetCurrentSession()", " if ($s) { $pType = [Windows.Media.Control.GlobalSystemMediaTransportControlsSessionMediaProperties,Windows.Media.Control,ContentType=WindowsRuntime]; $p = Await ($s.TryGetMediaPropertiesAsync()) $pType; $res = $p.Artist + ' - ' + $p.Title } else { $res = 'Nothing playing' }", " Set-Content -Path " + psQuote(npFile.fsName) + " -Value $res -Encoding UTF8", "} catch { Set-Content -Path " + psQuote(npFile.fsName) + " -Value 'Nothing playing' -Encoding UTF8 }", "Remove-Item -LiteralPath " + psQuote(sF.fsName) + " -Force; Remove-Item -LiteralPath " + psQuote(lF.fsName) + " -Force"].join("\r\n");
+            var s = ["$ErrorActionPreference = 'Stop'", "try {", " Add-Type -AssemblyName System.Runtime.WindowsRuntime", " $asTask = ([System.WindowsRuntimeSystemExtensions].GetMethods() | Where-Object { $_.Name -eq 'AsTask' -and $_.IsGenericMethod -and $_.GetParameters().Count -eq 1 })[0]", " function Await($op, $type) { $t = $asTask.MakeGenericMethod($type).Invoke($null, @($op)); $t.Wait(-1) | Out-Null; return $t.Result }", " $mType = [Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager,Windows.Media.Control,ContentType=WindowsRuntime]", " $mgr = Await ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager]::RequestAsync()) $mType", " $s = $mgr.GetCurrentSession()", " if ($s) { $pType = [Windows.Media.Control.GlobalSystemMediaTransportControlsSessionMediaProperties,Windows.Media.Control,ContentType=WindowsRuntime]; $p = Await ($s.TryGetMediaPropertiesAsync()) $pType; $res = $p.Artist + ' - ' + $p.Title } else { $res = 'Nothing playing' }", " Set-Content -Path " + psQuote(npFile.fsName) + " -Value $res -Encoding UTF8", "} catch { Set-Content -Path " + psQuote(npFile.fsName) + " -Value 'ERROR' -Encoding UTF8 }", "Remove-Item -LiteralPath " + psQuote(sF.fsName) + " -Force; Remove-Item -LiteralPath " + psQuote(lF.fsName) + " -Force"].join("\r\n");
             var l = ["Dim sh: Set sh = CreateObject(\"WScript.Shell\")", "cmd = \"powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File \" & Chr(34) & " + vbsQuote(sF.fsName) + " & Chr(34)", "sh.Run cmd, 0, False"].join("\r\n");
             writeFile(sF, s); writeFile(lF, l); system.callSystem("wscript.exe //B //NoLogo " + cmdQuote(lF.fsName));
         }
 
         function checkNowPlaying() {
-            if (closed || !npFile.exists) return;
+            if (closed) return;
+            if (!npFile.exists) {
+                if (isFetchingNP && fetchStartedAt && (new Date().getTime() - fetchStartedAt) > FETCH_TIMEOUT) {
+                    isFetchingNP = false;
+                    setPlaybackState("ERROR", [0.95, 0.25, 0.25], "Now-playing request timed out");
+                }
+                return;
+            }
             try {
                 var c = readFile(npFile);
-                if (c && c !== fullSongText) { fullSongText = c; scrollIndex = 0; }
                 npFile.remove();
+                isFetchingNP = false;
+                if (c === "ERROR") {
+                    songInfo.text = "Playback information unavailable";
+                    setPlaybackState("ERROR", [0.95, 0.25, 0.25], "Could not read playback information");
+                } else if (c === "Nothing playing") {
+                    fullSongText = "";
+                    songInfo.text = "Nothing is currently playing";
+                    setPlaybackState("NOT PLAYING", muted, "No active track");
+                } else if (c) {
+                    if (c !== fullSongText) { fullSongText = c; scrollIndex = 0; }
+                    songInfo.text = fullSongText;
+                    setPlaybackState("NOW PLAYING", accent, "Active track detected");
+                }
                 panel.layout.layout(true);
-            } catch(e) {}
-            isFetchingNP = false;
+            } catch (e) {
+                isFetchingNP = false;
+                setPlaybackState("ERROR", [0.95, 0.25, 0.25], "Playback read error: " + e.message);
+            }
         }
 
         function scrollText() {
