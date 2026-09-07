@@ -61,6 +61,25 @@
             else paint(b, bg, muted);
         }
 
+        function savePreference(key, value) {
+            try { app.settings.saveSetting("AfterPlaylist", key, String(value)); } catch (e) {}
+        }
+
+        function loadPreference(key, fallback) {
+            try {
+                if (app.settings.haveSetting("AfterPlaylist", key)) {
+                    return app.settings.getSetting("AfterPlaylist", key);
+                }
+            } catch (e) {}
+            return fallback;
+        }
+
+        var pollSeconds = parseInt(loadPreference("pollSeconds", "6"), 10);
+        if (pollSeconds !== 3 && pollSeconds !== 6 && pollSeconds !== 10 && pollSeconds !== 15) pollSeconds = 6;
+        var startCompact = loadPreference("startCompact", "false") === "true";
+        var scrollEnabled = loadPreference("scrollEnabled", "true") === "false";
+        var showFooter = loadPreference("showFooter", "true") === "false";
+
         // header and hero
         panel.orientation = "column"; panel.alignChildren = ["fill", "top"];
         panel.spacing = 12; panel.margins = 16; paint(panel, bg, white);
