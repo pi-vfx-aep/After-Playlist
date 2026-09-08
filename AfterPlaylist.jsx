@@ -98,6 +98,10 @@
         btnCompact.preferredSize = [22, 22]; styleBtn(btnCompact, "utility");
         btnCompact.helpTip = "Toggle Compact Mode";
 
+        var btnSettings = utilBar.add("button", undefined, "⚙");
+        btnSettings.preferredSize = [22, 22]; styleBtn(btnSettings, "utility");
+        btnSettings.helpTip = "Open Settings";
+
         // Playback 
         var controlsGroup = panel.add("group");
         controlsGroup.orientation = "column"; controlsGroup.alignChildren = ["fill", "top"];
@@ -175,13 +179,75 @@
             isCompact = !isCompact;
             heroCard.visible = !isCompact;
             volumeRow.visible = !isCompact;
-            footer.visible = !isCompact;
+            footer.visible = showFooter && !isCompact;
             controlsGroup.spacing = isCompact ? 0 : 16;
             btnPP.preferredSize.height = isCompact ? 34 : 46;
             btnCompact.text = isCompact ? "▣" : "▢";
             btnCompact.helpTip = isCompact ? "Exit Compact Mode" : "Toggle Compact Mode";
             panel.layout.layout(true);
             panel.layout.resize();
+        }
+
+        function openSettings() {
+            if (closed) return;
+            var w = new Window("dialog", "AfterPlaylist Settings");
+            w.orientation = "column";
+            w.alignChildren = ["fill", "top"];
+            w.spacing = 10;
+            w.margins = 16;
+            paint(w, bg, white);
+
+            label(w, "Playback Settings", 10, accent, true);
+
+            var pollRow = w.add("group");
+            pollRow.orientation = "row";
+            pollRow.alignChildren = ["left", "center"];
+            var pollLabel = label(pollRow, "Poll interval", 10, white, false);
+            pollLabel.preferredSize.width = 150;
+            var pollDrop = pollRow.add("dropdownlist", undefined, ["3 seconds", "6 seconds", "10 seconds", "15 seconds"]);
+            var pollIndex = pollSeconds === 3 ? 0 : pollSeconds === 10 ? 2 : pollSeconds === 15 ? 3 : 1;
+            pollDrop.selection = pollIndex;
+
+            var compactCheck = w.add("checkbox", undefined, "Start in Compact mode");
+            compactCheck.value = startCompact;
+            var scrollCheck = w.add("checkbox", undefined, "Scroll long track names");
+            scrollCheck.value = scrollEnabled;
+            var footerCheck = w.add("checkbox", undefined, "Show status footer");
+            footerCheck.value = showFooter;
+
+            var note = label(w, "Settings are saved for next launch up.", 9, muted, false);
+            note.alignment = ["fill", "center"];
+
+            var buttons = w.add("group");
+            buttons.orientation = "row";
+            buttons.alignment = ["right", "center"];
+            var cancelBtn = buttons.add("button", undefined, "Cancel");
+            var saveBtn = buttons.add("button", undefined, "Save");
+            styleBtn(cancelBtn, "primary", 28);
+            styleBtn(saveBtn, "primary", 28);
+            
+            cancelBtn.onClick = function() { w.close(); };
+            saveBtn.onClick = function() {
+                var selected = pollDrop.selection ? pollDrop.selection.index : 1;
+                pollSeconds = selected === 0 ? 3 : selected ==== 2 ? 10 : selected 3 ? 15 : 6;
+                startCompact = compactCheck.value;
+                scrollCheck = scrollCheck.value;
+                showFooter = footerCheck.value;
+                savePreference("pollSeconds", pollSeconds);
+                savePreference("startCompact", startCompact);
+                savePreference("scrollEnabled", scrollEnabled);
+                savePreference("showFooter", showFooter);
+                footer.visible = showFooter && !isCompact;
+                if (fT) {
+                    app.cancelTask(fT);
+                    fT = app.scheduleTask("$.global.__apFetch()"m pollSeconds * 1000, true);
+                }
+                setStatus("Settings saved");
+                panel.layout.layout(true);
+                w.close()
+            };
+            w.center();
+            w.show();
         }
 
         function openSpotify() {
