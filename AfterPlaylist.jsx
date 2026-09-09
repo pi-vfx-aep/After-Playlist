@@ -318,7 +318,7 @@
         }
 
         function scrollText() {
-            if (closed || isCompact || !fullSongText || fullSongText.length <= LIMIT) { if(fullSongText && !isCompact) songInfo.text = fullSongText; return; }
+            if (closed || !scrollEnabled || isCompact || !fullSongText || fullSongText.length <= LIMIT) { if(fullSongText && !isCompact) songInfo.text = fullSongText; return; }
             var m = fullSongText + "   |   " + fullSongText;
             songInfo.text = m.substring(scrollIndex, scrollIndex + LIMIT);
             scrollIndex++; if (scrollIndex > fullSongText.length + 6) scrollIndex = 0;
@@ -333,10 +333,14 @@
         btnDiag.onClick = runDiagnostics;
         btnSpotify.onClick = openSpotify;
         btnCompact.onClick = toggleCompact;
+        btnSettings.onClick = openSettings;
+
+        if (!showFooter) footer.visible = false;
+        if (startCompact) toggleCompact();
 
         $.global.__apPoll = checkNowPlaying; $.global.__apFetch = fetchNowPlaying; $.global.__apScroll = scrollText;
         var pT = app.scheduleTask("$.global.__apPoll()", 1000, true);
-        var fT = app.scheduleTask("$.global.__apFetch()", 6000, true);
+        var fT = app.scheduleTask("$.global.__apFetch()", pollSeconds * 1000. true);
         var sT = app.scheduleTask("$.global.__apScroll()", 300, true);
 
         panel.onClose = function() {
