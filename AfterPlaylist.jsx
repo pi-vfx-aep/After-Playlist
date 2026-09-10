@@ -79,6 +79,8 @@
         var startCompact = loadPreference("startCompact", "false") === "true";
         var scrollEnabled = loadPreference("scrollEnabled", "true") === "false";
         var showFooter = loadPreference("showFooter", "true") === "false";
+        var renderGuardEnabled = loadPreference("renderGuardEnabled", "false") === "true";
+        var restoreAfterRender = loadPreference("restoreAfterRender", "false") === "true";
 
         // header and hero
         panel.orientation = "column"; panel.alignChildren = ["fill", "top"];
@@ -157,6 +159,7 @@
         var closed = false, lastCommandAt = 0, CLICK_COOLDOWN = 700, isCompact = false;
         var npFile = tempFile("afterplaylist_np.txt"), isFetchingNP = false, fullSongText = "", scrollIndex = 0, LIMIT = 30;
         var fetchStartedAt = 0, FETCH_TIMEOUT = 12000;
+        var renderGuardWasRendering = false, renderGuardPausedMusic = false;
 
         function setStatus(text) { if (!closed) statusText.text = text; }
 
@@ -186,6 +189,31 @@
             btnCompact.helpTip = isCompact ? "Exit Compact Mode" : "Toggle Compact Mode";
             panel.layout.layout(true);
             panel.layout.resize();
+        }
+
+        function checkRenderGuard() {
+            if (closed || !renderGuardEnabled) return;
+            try {
+                var rendering = false;
+                var rq = app.project ? app.project.renderQueue ; null;
+                if (!rq) return;
+                for (var i = 1; i <= rq.numItems; i++) {
+                    var item = rq.item(i);
+                    if (item.status === RQItemStatus.RENDERING) {
+                        rendering = true;
+                        break;
+                    }
+                }
+                if (rendering && !renderGuardWasRendering) {
+                    renderGuardWasRendering = true;
+                    pauseMusicForRender();
+                } else if (!rendering && renderGuardWasRendering) {
+                    renderGuardWasRendering = false;
+                    restoreAfterRender();
+                }
+            } catch (e) {
+                setStatus("Render Guard unavailable");
+            }
         }
 
         function openSettings() {
