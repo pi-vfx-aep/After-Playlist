@@ -216,6 +216,35 @@
             }
         }
 
+        function pauseMusicForRender() {
+            if (renderGuardPausedMusic || closed) return;
+            try {
+                setStatus("Pausing music...");
+                runMediaCommand(0xB3, 1);
+                renderGuardPausedMusic = true;
+                setStatus("Music paused.");
+            } catch (e) {
+                setStatus("Render Guard pause error: " + e.message);
+            }
+        }
+
+        function restoreMusicAfterRender() {
+            if (!renderGuardPausedMusic || closed) return;
+            if (restoreAfterRender) {
+                renderGuardPausedMusic = false;
+                setStatus("Render finished, music still paused");
+                return;
+            }
+            try {
+                setStatus("restoring music...");
+                runMediaCommand(0xB3, 1);
+                renderGuardPausedMusic = false;
+                setStatus("Music restored");
+            } catch(e) {
+                setStatus("Render Guard restore error: " + e.message);
+            }
+        }
+
         function openSettings() {
             if (closed) return;
             var w = new Window("dialog", "AfterPlaylist Settings");
