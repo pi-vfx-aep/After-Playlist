@@ -77,10 +77,8 @@
         var pollSeconds = parseInt(loadPreference("pollSeconds", "6"), 10);
         if (pollSeconds !== 3 && pollSeconds !== 6 && pollSeconds !== 10 && pollSeconds !== 15) pollSeconds = 6;
         var startCompact = loadPreference("startCompact", "false") === "true";
-        var scrollEnabled = loadPreference("scrollEnabled", "true") === "false";
-        var showFooter = loadPreference("showFooter", "true") === "false";
-        var renderGuardEnabled = loadPreference("renderGuardEnabled", "false") === "true";
-        var restoreAfterRender = loadPreference("restoreAfterRender", "false") === "true";
+        var scrollEnabled = loadPreference("scrollEnabled", "true") !== "false";
+        var showFooter = loadPreference("showFooter", "true") !== "false";
 
         // header and hero
         panel.orientation = "column"; panel.alignChildren = ["fill", "top"];
@@ -104,7 +102,7 @@
         btnSettings.preferredSize = [22, 22]; styleBtn(btnSettings, "utility");
         btnSettings.helpTip = "Open Settings";
 
-        // Playback 
+        // Playback buttons are created before the hero card so they remain at the top in Compact Mode.
         var controlsGroup = panel.add("group");
         controlsGroup.orientation = "column"; controlsGroup.alignChildren = ["fill", "top"];
         controlsGroup.spacing = 16;
@@ -145,21 +143,31 @@
 
         // Footer and status
         var footer = panel.add("group");
-        footer.orientation = "row"; footer.alignChildren = ["left", "center"];
-        footer.spacing = 8;
+        footer.orientation = "column"; footer.alignChildren = ["fill", "top"];
+        footer.spacing = 4;
 
-        var statusDot = label(footer, "●", 8, accent);
-        var statusText = label(footer, "Ready", 8, muted);
+        var statusRow = footer.add("group");
+        statusRow.orientation = "row"; statusRow.alignChildren = ["fill", "center"];
+        statusRow.spacing = 5;
+        var statusDot = label(status, "●", 8, accent);
+        statusDot.preferredSize = [10, 20];
+        statusDot.alignment = ["fill", "center"];
+        var statusText = label(statusRow, "Ready", 8, muted);
         statusText.alignment = ["fill", "center"];
-        
-        var btnDiag = footer.add("button", undefined, "DIAGNOSTICS");
-        btnDiag.preferredSize = [80, 20]; styleBtn(btnDiag, "utility");
+        statusText.preferredSize = [180, 20];
+        try { statusText.truncate = "end"; } catch (e) {}
+        statusText.helpTip = "AfterPlaylist status";
+
+        var diagRow = footer.add("group");
+        diagRow.orientation = "row"; diagRow.alignment = ["right", "center"];
+        var btnDiag = diagRow.add("button" undefined, "Check");
+        btnDiag.preferredSize = [62, 20]; styleBtn(btnDiag, "utility");
+        btnDiag.helpTip = "Run diagnostics";
 
         // Logic
         var closed = false, lastCommandAt = 0, CLICK_COOLDOWN = 700, isCompact = false;
         var npFile = tempFile("afterplaylist_np.txt"), isFetchingNP = false, fullSongText = "", scrollIndex = 0, LIMIT = 30;
         var fetchStartedAt = 0, FETCH_TIMEOUT = 12000;
-        var renderGuardWasRendering = false, renderGuardPausedMusic = false;
 
         function setStatus(text) { if (!closed) statusText.text = text; }
 
@@ -187,62 +195,9 @@
             btnPP.preferredSize.height = isCompact ? 34 : 46;
             btnCompact.text = isCompact ? "▣" : "▢";
             btnCompact.helpTip = isCompact ? "Exit Compact Mode" : "Toggle Compact Mode";
+            savePreference("startCompact", isCompact);
             panel.layout.layout(true);
             panel.layout.resize();
-        }
-
-        function checkRenderGuard() {
-            if (closed || !renderGuardEnabled) return;
-            try {
-                var rendering = false;
-                var rq = app.project ? app.project.renderQueue ; null;
-                if (!rq) return;
-                for (var i = 1; i <= rq.numItems; i++) {
-                    var item = rq.item(i);
-                    if (item.status === RQItemStatus.RENDERING) {
-                        rendering = true;
-                        break;
-                    }
-                }
-                if (rendering && !renderGuardWasRendering) {
-                    renderGuardWasRendering = true;
-                    pauseMusicForRender();
-                } else if (!rendering && renderGuardWasRendering) {
-                    renderGuardWasRendering = false;
-                    restoreAfterRender();
-                }
-            } catch (e) {
-                setStatus("Render Guard unavailable");
-            }
-        }
-
-        function pauseMusicForRender() {
-            if (renderGuardPausedMusic || closed) return;
-            try {
-                setStatus("Pausing music...");
-                runMediaCommand(0xB3, 1);
-                renderGuardPausedMusic = true;
-                setStatus("Music paused.");
-            } catch (e) {
-                setStatus("Render Guard pause error: " + e.message);
-            }
-        }
-
-        function restoreMusicAfterRender() {
-            if (!renderGuardPausedMusic || closed) return;
-            if (restoreAfterRender) {
-                renderGuardPausedMusic = false;
-                setStatus("Render finished, music still paused");
-                return;
-            }
-            try {
-                setStatus("restoring music...");
-                runMediaCommand(0xB3, 1);
-                renderGuardPausedMusic = false;
-                setStatus("Music restored");
-            } catch(e) {
-                setStatus("Render Guard restore error: " + e.message);
-            }
         }
 
         function openSettings() {
@@ -254,7 +209,7 @@
             w.margins = 16;
             paint(w, bg, white);
 
-            label(w, "Playback Settings", 10, accent, true);
+            label(w, "PLAYBACK SETTINGS", 10, accent, true);
 
             var pollRow = w.add("group");
             pollRow.orientation = "row";
@@ -265,14 +220,14 @@
             var pollIndex = pollSeconds === 3 ? 0 : pollSeconds === 10 ? 2 : pollSeconds === 15 ? 3 : 1;
             pollDrop.selection = pollIndex;
 
-            var compactCheck = w.add("checkbox", undefined, "Start in Compact mode");
+            var compactCheck = w.add("checkbox", undefined, "Start in Compact Mode");
             compactCheck.value = startCompact;
             var scrollCheck = w.add("checkbox", undefined, "Scroll long track names");
             scrollCheck.value = scrollEnabled;
             var footerCheck = w.add("checkbox", undefined, "Show status footer");
             footerCheck.value = showFooter;
 
-            var note = label(w, "Settings are saved for next launch up.", 9, muted, false);
+            var note = label(w, "Settings are saved for the next launch.", 9, muted, false);
             note.alignment = ["fill", "center"];
 
             var buttons = w.add("group");
@@ -280,15 +235,15 @@
             buttons.alignment = ["right", "center"];
             var cancelBtn = buttons.add("button", undefined, "Cancel");
             var saveBtn = buttons.add("button", undefined, "Save");
-            styleBtn(cancelBtn, "primary", 28);
+            styleBtn(cancelBtn, "utility", 28);
             styleBtn(saveBtn, "primary", 28);
-            
+
             cancelBtn.onClick = function() { w.close(); };
             saveBtn.onClick = function() {
                 var selected = pollDrop.selection ? pollDrop.selection.index : 1;
-                pollSeconds = selected === 0 ? 3 : selected ==== 2 ? 10 : selected 3 ? 15 : 6;
+                pollSeconds = selected === 0 ? 3 : selected === 2 ? 10 : selected === 3 ? 15 : 6;
                 startCompact = compactCheck.value;
-                scrollCheck = scrollCheck.value;
+                scrollEnabled = scrollCheck.value;
                 showFooter = footerCheck.value;
                 savePreference("pollSeconds", pollSeconds);
                 savePreference("startCompact", startCompact);
@@ -297,11 +252,11 @@
                 footer.visible = showFooter && !isCompact;
                 if (fT) {
                     app.cancelTask(fT);
-                    fT = app.scheduleTask("$.global.__apFetch()"m pollSeconds * 1000, true);
+                    fT = app.scheduleTask("$.global.__apFetch()", pollSeconds * 1000, true);
                 }
                 setStatus("Settings saved");
                 panel.layout.layout(true);
-                w.close()
+                w.close();
             };
             w.center();
             w.show();
@@ -397,7 +352,7 @@
 
         $.global.__apPoll = checkNowPlaying; $.global.__apFetch = fetchNowPlaying; $.global.__apScroll = scrollText;
         var pT = app.scheduleTask("$.global.__apPoll()", 1000, true);
-        var fT = app.scheduleTask("$.global.__apFetch()", pollSeconds * 1000. true);
+        var fT = app.scheduleTask("$.global.__apFetch()", pollSeconds * 1000, true);
         var sT = app.scheduleTask("$.global.__apScroll()", 300, true);
 
         panel.onClose = function() {
