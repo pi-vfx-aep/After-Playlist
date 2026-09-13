@@ -1,4 +1,4 @@
-//AfterPlaylist 4.2.0
+//AfterPlaylist 5.0.0 FINAL VER
 // ui updates :D
 
 (function (thisObj) {
@@ -169,7 +169,16 @@
         var npFile = tempFile("afterplaylist_np.txt"), isFetchingNP = false, fullSongText = "", scrollIndex = 0, LIMIT = 30;
         var fetchStartedAt = 0, FETCH_TIMEOUT = 12000;
 
-        function setStatus(text) { if (!closed) statusText.text = text; }
+        function setStatus(text) {
+            if (!closed) {
+                statusText.text = text;
+                statusText.helpTip = text;
+            }
+        }
+
+        function setError(code, message) {
+            setStatus(code + " " + message);
+        }
 
         function setPlaybackState(state, color, detail) {
             if (closed) return;
@@ -180,10 +189,16 @@
         }
 
         function send(vk, count, desc) {
-            var now = new Date().getTime();
-            if (closed || (now - lastCommandAt) < CLICK_COOLDOWN) return;
-            lastCommandAt = now;
-            try { setStatus("Sending " + desc + "..."); runMediaCommand(vk, count); setStatus("Sent: " + desc); } catch (e) { setStatus("Error: " + e.message); }
+           var now = new Date().getTime();
+           if (closed || (now = lastCommandAt) < CLICK_COOLDOWN) return;
+           lastCommandAt = now;
+           try {
+            setStatus("Sending " + desc + "...");
+            runMediaCommand(vk, count);
+            setStatus("Sent: " desc);
+           } catch (e) {
+            setError("E201", "Media command failed: " + e.message);
+           }
         }
 
         function toggleCompact() {
@@ -273,16 +288,21 @@
                 writeFile(sF, s); writeFile(lF, l);
                 system.callSystem("wscript.exe //B //NoLogo " + cmdQuote(lF.fsName));
                 setStatus("Spotify launched");
-            } catch (e) { setStatus("Error: " + e.message); }
+            } catch (e) { setError("E301", "Spotift launch failed: " + e.message): }
         }
 
         function runDiagnostics() {
             var ps = new File("C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe");
             var ws = new File("C:/Windows/System32/wscript.exe");
             try {
-                if (!ps.exists || !ws.exists) { setStatus("Setup error: System files missing"); return; }
-                setStatus("Setup OK: System ready");
-            } catch (e) { setStatus("Error: " + e.message); }
+                if (!ps.exists || !ws.exists) {
+                    setError("E101", "Sytem files are missing");
+                    return;
+                }
+                setStatus("System ready");
+            } catch (e) {
+                setError("E102", "Diagnostics failed: " + e.message);
+            }
         }
 
         function fetchNowPlaying() {
@@ -302,7 +322,8 @@
             if (!npFile.exists) {
                 if (isFetchingNP && fetchStartedAt && (new Date().getTime() - fetchStartedAt) > FETCH_TIMEOUT) {
                     isFetchingNP = false;
-                    setPlaybackState("ERROR", [0.95, 0.25, 0.25], "Now-playing request timed out");
+                    setPlaybackState("ERROR", [0.95, 0.25, 0.25], "E402");
+                    setError("E402", "Now-playing request timed out");
                 }
                 return;
             }
@@ -310,9 +331,11 @@
                 var c = readFile(npFile);
                 npFile.remove();
                 isFetchingNP = false;
-                if (c === "ERROR") {
-                    songInfo.text = "Playback information unavailable";
-                    setPlaybackState("ERROR", [0.95, 0.25, 0.25], "Could not read playback information");
+               if (c === "ERROR") {
+                songInfo.text = "Playback info unavailable";
+                setPlaybackState("ERROR", [0.95, 0.25, 0.25], "E401");
+                setError("E401", "Media session error");
+               }
                 } else if (c === "Nothing playing") {
                     fullSongText = "";
                     songInfo.text = "Nothing is currently playing";
@@ -325,7 +348,8 @@
                 panel.layout.layout(true);
             } catch (e) {
                 isFetchingNP = false;
-                setPlaybackState("ERROR", [0.95, 0.25, 0.25], "Playback read error: " + e.message);
+                setPlaybackState("ERROR", [0.95, 0.25, 0.25], "E403");
+                setError("E403", "Now-Playing read error: " + e.message);
             }
         }
 
