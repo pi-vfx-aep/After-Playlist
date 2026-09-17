@@ -1,5 +1,5 @@
 //AfterPlaylist 5.0.0 FINAL VER
-// ui updates :D
+// I added a settings menu lets goooooo 
 
 (function (thisObj) {
     function tempFile(name) { return new File(Folder.temp.fsName + "/" + name); }
