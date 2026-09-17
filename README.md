@@ -1,7 +1,7 @@
 # After-Playlist
 > Tired of switching between After Effects and Spotify? After Playlist is a script UI panel in AE that lets you perform media controls directly inside AE!
 
-DEMO:
+DEMO (outdated but still helps):
 
 https://github.com/user-attachments/assets/9ad80a17-95d3-4de7-aea7-a30cf1d47db0
 
