@@ -11,14 +11,23 @@ Make sure After Effects is not currently running when you add the file to the di
 ## Main controls
 
 ◈ - Launches Spotify
+
 ▢ - Toggles compact mode
+
 ⚙ - Launches settings menu
+
 ◀◀ - Previous track
+
 ▶ Ⅱ - Play/Pause
+
 ▶▶ - Next track
+
 − - Volume down
+
 ✕ - Mute
+
 + - Volume up
+
 DIAGNOSTICS - Runs diagnostics test
 
 ## Now-playing display
