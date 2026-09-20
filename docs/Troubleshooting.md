@@ -1,4 +1,4 @@
-# After Playlist 5.0.0 = Troubleshooting Manual
+# After Playlist 5.0.0 - Troubleshooting Manual
 
 This guide applies to the new and final version 5.0.0 of After Playlist for Adobe After Effects.
 
